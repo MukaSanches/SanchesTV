@@ -1,5 +1,6 @@
 using System.IO;
 using LibVLCSharp.Shared;
+using SanchesTV.Core.Models;
 using SanchesTV.Core.Playback;
 
 namespace SanchesTV.Desktop.Playback;
@@ -13,7 +14,8 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     public string Name => "LibVLC";
     public bool IsAvailable => MediaPlayer.NativeReference != IntPtr.Zero;
     public MediaPlayer MediaPlayer { get; }
-    public Uri? CurrentSource { get; private set; }
+    public Uri? CurrentSource => CurrentChannelSource?.Url;
+    public ChannelSource? CurrentChannelSource { get; private set; }
     public string? RecordingPath => _recordingPath;
 
     public event EventHandler<string>? PlaybackError;
@@ -38,22 +40,24 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
 
     public Task OpenAsync(Uri source, CancellationToken cancellationToken = default)
     {
+        return OpenAsync(new ChannelSource(Guid.NewGuid(), "Direto", source, 0), cancellationToken);
+    }
+
+    public Task OpenAsync(ChannelSource source, CancellationToken cancellationToken = default)
+    {
         cancellationToken.ThrowIfCancellationRequested();
-        CurrentSource = source;
-        using var media = new Media(
-            _libVlc,
-            source,
-            ":network-caching=1500",
-            ":live-caching=1500",
-            ":http-reconnect=true");
+        CurrentChannelSource = source;
+
+        using var media = new Media(_libVlc, source.Url, VlcSourceOptions.Build(source));
         if (!MediaPlayer.Play(media))
             throw new InvalidOperationException("O mecanismo de vídeo recusou a fonte.");
         return Task.CompletedTask;
     }
 
-    public async Task<Uri> OpenWithFallbackAsync(IEnumerable<Uri> sources, CancellationToken cancellationToken = default)
+    public async Task<ChannelSource> OpenWithFallbackAsync(IEnumerable<ChannelSource> sources, CancellationToken cancellationToken = default)
     {
         Exception? last = null;
+
         foreach (var source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -73,11 +77,12 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
                 var finished = await Task.WhenAny(
                     played.Task,
                     Task.Delay(TimeSpan.FromSeconds(8), cancellationToken));
+
                 if (finished == played.Task && await played.Task)
                     return source;
 
                 await StopAsync(cancellationToken);
-                last = new InvalidOperationException($"Fonte não iniciou: {source.Host}");
+                last = new InvalidOperationException($"Fonte não iniciou: {source.Url.Host}");
             }
             catch (Exception ex)
             {
@@ -92,6 +97,12 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
         }
 
         throw new InvalidOperationException("Nenhuma fonte disponível conseguiu iniciar.", last);
+    }
+
+    public async Task<Uri> OpenWithFallbackAsync(IEnumerable<Uri> sources, CancellationToken cancellationToken = default)
+    {
+        var wrapped = sources.Select(uri => new ChannelSource(Guid.NewGuid(), "Direto", uri, 0));
+        return (await OpenWithFallbackAsync(wrapped, cancellationToken)).Url;
     }
 
     public Task PlayAsync(CancellationToken cancellationToken = default)
@@ -134,21 +145,22 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
 
     public bool StartRecording(string directory)
     {
-        if (CurrentSource is null || _recorder is not null)
+        var source = CurrentChannelSource;
+        if (source is null || _recorder is not null)
             return false;
 
         Directory.CreateDirectory(directory);
         var file = Path.Combine(directory, $"SanchesTV-{DateTime.Now:yyyyMMdd-HHmmss}.ts");
-        var escaped = file.Replace("\\", "/");
+        var escaped = file.Replace("\", "/");
 
-        using var media = new Media(
-            _libVlc,
-            CurrentSource,
+        var options = VlcSourceOptions.Build(
+            source,
             $":sout=#file{{dst={escaped}}}",
-            ":sout-keep",
-            ":network-caching=1500");
+            ":sout-keep");
 
+        using var media = new Media(_libVlc, source.Url, options);
         _recorder = new MediaPlayer(_libVlc);
+
         if (!_recorder.Play(media))
         {
             _recorder.Dispose();
@@ -164,6 +176,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
     {
         if (_recorder is null)
             return;
+
         _recorder.Stop();
         _recorder.Dispose();
         _recorder = null;
