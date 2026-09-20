@@ -71,6 +71,9 @@ public sealed class AppDatabase
             audio_codec TEXT,
             bitrate INTEGER,
             last_error TEXT,
+            user_agent TEXT,
+            referrer TEXT,
+            origin TEXT,
             UNIQUE(channel_id, url),
             FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
         );
@@ -101,6 +104,26 @@ public sealed class AppDatabase
         );
         """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await EnsureColumnAsync(connection, "channel_sources", "user_agent", "TEXT", cancellationToken);
+        await EnsureColumnAsync(connection, "channel_sources", "referrer", "TEXT", cancellationToken);
+        await EnsureColumnAsync(connection, "channel_sources", "origin", "TEXT", cancellationToken);
+    }
+
+    private static async Task EnsureColumnAsync(SqliteConnection connection, string table, string column, string sqlType, CancellationToken cancellationToken)
+    {
+        var check = connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({table});";
+        await using var reader = await check.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+        await reader.DisposeAsync();
+
+        var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {sqlType};";
+        await alter.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<int> UpsertChannelsAsync(IEnumerable<Channel> channels, CancellationToken cancellationToken = default)
@@ -152,12 +175,15 @@ public sealed class AppDatabase
                 sourceCommand.Transaction = transaction;
                 sourceCommand.CommandText = """
                 INSERT INTO channel_sources
-                    (id, channel_id, provider, url, priority, status, latency_ms, resolution, video_codec, audio_codec, bitrate, last_error)
+                    (id, channel_id, provider, url, priority, status, latency_ms, resolution, video_codec, audio_codec, bitrate, last_error, user_agent, referrer, origin)
                 VALUES
-                    ($id, $channel, $provider, $url, $priority, $status, $latency, $resolution, $video, $audio, $bitrate, $error)
+                    ($id, $channel, $provider, $url, $priority, $status, $latency, $resolution, $video, $audio, $bitrate, $error, $userAgent, $referrer, $origin)
                 ON CONFLICT(channel_id, url) DO UPDATE SET
                     provider=excluded.provider,
-                    priority=MIN(channel_sources.priority, excluded.priority);
+                    priority=MIN(channel_sources.priority, excluded.priority),
+                    user_agent=COALESCE(excluded.user_agent, channel_sources.user_agent),
+                    referrer=COALESCE(excluded.referrer, channel_sources.referrer),
+                    origin=COALESCE(excluded.origin, channel_sources.origin);
                 """;
                 sourceCommand.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
                 sourceCommand.Parameters.AddWithValue("$channel", channelId.ToString());
@@ -171,6 +197,9 @@ public sealed class AppDatabase
                 sourceCommand.Parameters.AddWithValue("$audio", (object?)source.AudioCodec ?? DBNull.Value);
                 sourceCommand.Parameters.AddWithValue("$bitrate", (object?)source.Bitrate ?? DBNull.Value);
                 sourceCommand.Parameters.AddWithValue("$error", (object?)source.LastError ?? DBNull.Value);
+                sourceCommand.Parameters.AddWithValue("$userAgent", (object?)source.UserAgent ?? DBNull.Value);
+                sourceCommand.Parameters.AddWithValue("$referrer", (object?)source.Referrer ?? DBNull.Value);
+                sourceCommand.Parameters.AddWithValue("$origin", (object?)source.Origin ?? DBNull.Value);
                 await sourceCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
@@ -239,7 +268,8 @@ public sealed class AppDatabase
         var result = new List<ChannelSource>();
         var command = connection.CreateCommand();
         command.CommandText = """
-        SELECT id, provider, url, priority, status, latency_ms, resolution, video_codec, audio_codec, bitrate, last_error
+        SELECT id, provider, url, priority, status, latency_ms, resolution, video_codec, audio_codec, bitrate, last_error,
+               user_agent, referrer, origin
         FROM channel_sources WHERE channel_id=$channel ORDER BY priority, provider;
         """;
         command.Parameters.AddWithValue("$channel", channelId.ToString());
@@ -261,7 +291,10 @@ public sealed class AppDatabase
                 reader.IsDBNull(7) ? null : reader.GetString(7),
                 reader.IsDBNull(8) ? null : reader.GetString(8),
                 reader.IsDBNull(9) ? null : reader.GetInt64(9),
-                reader.IsDBNull(10) ? null : reader.GetString(10)));
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetString(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12),
+                reader.IsDBNull(13) ? null : reader.GetString(13)));
         }
 
         return result;
@@ -386,6 +419,29 @@ public sealed class AppDatabase
         }
 
         return (current, next);
+    }
+
+    public async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM settings WHERE key=$key LIMIT 1;";
+        command.Parameters.AddWithValue("$key", key);
+        var value = await command.ExecuteScalarAsync(cancellationToken);
+        return value as string;
+    }
+
+    public async Task SetSettingAsync(string key, string? value, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        INSERT INTO settings(key, value) VALUES($key, $value)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value;
+        """;
+        command.Parameters.AddWithValue("$key", key);
+        command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static EpgProgram ReadProgram(SqliteDataReader reader)
