@@ -106,7 +106,7 @@ public sealed class AppDatabase
     public async Task<int> UpsertChannelsAsync(IEnumerable<Channel> channels, CancellationToken cancellationToken = default)
     {
         await using var connection = Open();
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction();
         var count = 0;
 
         foreach (var incoming in channels)
@@ -177,7 +177,7 @@ public sealed class AppDatabase
             count++;
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        transaction.Commit();
         return count;
     }
 
@@ -318,7 +318,7 @@ public sealed class AppDatabase
     public async Task ReplaceEpgAsync(IEnumerable<EpgProgram> programs, CancellationToken cancellationToken = default)
     {
         await using var connection = Open();
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction();
 
         var clear = connection.CreateCommand();
         clear.Transaction = transaction;
@@ -342,7 +342,7 @@ public sealed class AppDatabase
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        transaction.Commit();
     }
 
     public async Task<(EpgProgram? Now, EpgProgram? Next)> GetNowNextAsync(string? epgId, CancellationToken cancellationToken = default)
