@@ -11,7 +11,10 @@ public sealed record ChannelSource(
     string? VideoCodec = null,
     string? AudioCodec = null,
     long? Bitrate = null,
-    string? LastError = null);
+    string? LastError = null,
+    string? UserAgent = null,
+    string? Referrer = null,
+    string? Origin = null);
 
 public enum StreamStatus
 {
