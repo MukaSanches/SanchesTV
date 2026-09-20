@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
+using SanchesTV.Core.Models;
+using SanchesTV.Desktop.Playback;
 
 namespace SanchesTV.Desktop.Windows;
 
@@ -11,7 +13,7 @@ public sealed class MultiviewWindow : Window
     private readonly List<MediaPlayer> _players = new();
     private readonly List<VideoView> _views = new();
 
-    public MultiviewWindow(IReadOnlyList<Uri> sources)
+    public MultiviewWindow(IReadOnlyList<ChannelSource> sources)
     {
         Title = "SanchesTV — Multiview";
         Width = 1100;
@@ -30,6 +32,7 @@ public sealed class MultiviewWindow : Window
 
         for (var i = 0; i < Math.Min(4, sources.Count); i++)
         {
+            var source = sources[i];
             var player = new MediaPlayer(_libVlc) { Volume = i == 0 ? 60 : 0 };
             var view = new VideoView { MediaPlayer = player, Margin = new Thickness(2) };
             Grid.SetRow(view, i / 2);
@@ -38,7 +41,7 @@ public sealed class MultiviewWindow : Window
             _players.Add(player);
             _views.Add(view);
 
-            using var media = new Media(_libVlc, sources[i], ":network-caching=1500", ":http-reconnect=true");
+            using var media = new Media(_libVlc, source.Url, VlcSourceOptions.Build(source));
             player.Play(media);
         }
 
