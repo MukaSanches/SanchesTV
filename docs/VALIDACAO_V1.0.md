@@ -1,11 +1,15 @@
 # Validação V1.0
 
-Este documento deve registrar somente verificações realmente executadas.
+A V1 inclui um modo --self-test para verificação determinística.
 
-## Automatizado
+Ele valida:
+- inicialização do SQLite;
+- persistência/importação de canais;
+- parser M3U;
+- parser XMLTV;
+- carregamento das bibliotecas nativas do LibVLC;
+- criação de MediaPlayer.
 
-O workflow Windows executa restore, build, testes e publish x64.
+O GitHub Actions também realiza instalação silenciosa em diretório limpo, executa o self-test a partir da instalação e desinstala.
 
-## Ainda não validado
-
-A primeira revisão ainda não declara player nativo, EPG, gravação, timeshift, multiview, PiP, controle remoto ou instalador EXE como concluídos. Esses itens só devem ser marcados como aprovados após implementação e teste real.
+Disponibilidade de canais ao vivo depende da rede e da emissora e não é usada como critério determinístico de CI.

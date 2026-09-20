@@ -1,4 +1,5 @@
 using SanchesTV.Core.Parsing;
+using Xunit;
 
 namespace SanchesTV.Tests;
 

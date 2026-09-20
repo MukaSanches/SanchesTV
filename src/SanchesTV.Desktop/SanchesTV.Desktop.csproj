@@ -8,8 +8,12 @@
     <AssemblyName>SanchesTV</AssemblyName>
     <RootNamespace>SanchesTV.Desktop</RootNamespace>
     <Version>1.0.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SanchesTV.Core\SanchesTV.Core.csproj" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
 </Project>

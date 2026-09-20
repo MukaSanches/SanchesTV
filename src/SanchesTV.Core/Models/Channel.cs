@@ -12,4 +12,6 @@ public sealed record Channel(
     string? Logo,
     string? EpgId,
     int? VirtualNumber,
-    IReadOnlyList<ChannelSource> Sources);
+    IReadOnlyList<ChannelSource> Sources,
+    bool IsFavorite = false,
+    int? MyTvPosition = null);

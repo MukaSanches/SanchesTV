@@ -1,5 +1,65 @@
 using System.Windows;
+using LibVLCSharp.Shared;
+using SanchesTV.Core.Catalog;
+using SanchesTV.Core.Parsing;
+using SanchesTV.Core.Storage;
 
 namespace SanchesTV.Desktop;
 
-public partial class App : Application { }
+public partial class App : Application
+{
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        if (e.Args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
+        {
+            var exit = await SelfTest.RunAsync();
+            Shutdown(exit);
+            return;
+        }
+
+        var window = new MainWindow();
+        MainWindow = window;
+        window.Show();
+    }
+}
+
+internal static class SelfTest
+{
+    public static async Task<int> RunAsync()
+    {
+        try
+        {
+            var temp = Path.Combine(Path.GetTempPath(), $"sanchestv-selftest-{Guid.NewGuid():N}.db");
+            var db = new AppDatabase(temp);
+            await db.InitializeAsync();
+
+            const string m3u = "#EXTM3U\n#EXTINF:-1 tvg-id=\"test\" group-title=\"Teste\",Canal Teste\nhttps://example.org/live.m3u8";
+            var channels = M3uParser.Parse(m3u);
+            if (channels.Count != 1)
+                return 11;
+
+            await db.UpsertChannelsAsync(channels.Concat(BuiltInCatalog.Create()));
+            if ((await db.GetChannelsAsync()).Count < 2)
+                return 12;
+
+            const string xml = "<tv><programme start=\"20260920200000 -0300\" stop=\"20260920210000 -0300\" channel=\"test\"><title>Teste</title></programme></tv>";
+            var epg = XmlTvParser.Parse(xml);
+            if (epg.Count != 1)
+                return 13;
+
+            Core.Initialize();
+            using var lib = new LibVLC("--no-video-title-show", "--quiet");
+            using var player = new MediaPlayer(lib);
+            _ = player.Volume;
+
+            try { File.Delete(temp); } catch { }
+            return 0;
+        }
+        catch
+        {
+            return 99;
+        }
+    }
+}

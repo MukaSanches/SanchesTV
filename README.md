@@ -1,26 +1,33 @@
 # SanchesTV
 
-Central de TV e IPTV para Windows.
+SanchesTV 1.0 é uma central de TV/IPTV para Windows, focada em português brasileiro e em reprodução de fontes legítimas fornecidas pelo próprio usuário ou por emissoras públicas/oficiais.
 
-## Status
+## Recursos implementados
 
-V1.0 em desenvolvimento ativo.
+- Player nativo baseado em LibVLC com aceleração de hardware quando disponível.
+- M3U/M3U8 por arquivo ou URL.
+- Xtream do próprio usuário.
+- XMLTV/EPG por arquivo ou URL.
+- Catálogo inicial de transmissões públicas/oficiais.
+- Favoritos, Recentes e Minha TV.
+- Pesquisa por canal, categoria, estado e região.
+- Failover entre múltiplas fontes.
+- Health-check HTTP/HTTPS.
+- Picture-in-Picture.
+- Multiview de até quatro canais.
+- Gravação TS quando a fonte permitir.
+- Pause/seek/timeshift quando a transmissão expuser seek.
+- Controle remoto pelo navegador do celular via rede local e QR Code.
+- Diagnóstico técnico.
+- SQLite local.
+- Instalador Windows x64.
 
-## Objetivo
+## Privacidade e conteúdo
 
-Aplicativo desktop Windows para reprodução de streams legítimos, importação de listas M3U/M3U8 e XMLTV, EPG, favoritos, histórico, health-check, failover, gravação, timeshift, PiP, multiview e controle remoto local.
+O SanchesTV não incorpora credenciais de terceiros e não deve ser usado para burlar DRM, paywall ou autenticação. Listas e servidores adicionados pelo usuário são responsabilidade do próprio usuário.
 
-## Regras do projeto
+## Build
 
-- Não incorporar retransmissões não autorizadas de canais pagos.
-- Não embutir credenciais de terceiros.
-- Priorizar funcionamento real, testes e build Release.
-- Nenhum recurso anunciado deve ser apenas mock.
+Use dotnet restore, dotnet build e dotnet test a partir da solução SanchesTV.sln.
 
-## Build local
-
-```powershell
-dotnet restore
-dotnet build -c Release
-dotnet test -c Release
-```
+O GitHub Actions executa build, testes, publish self-contained, self-test, criação do instalador, instalação limpa, self-test instalado e desinstalação.
