@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
-        Title="SanchesTV 1.0" Width="1400" Height="840"
-        MinWidth="1000" MinHeight="650"
+        Title="SanchesTV 2.0" Width="1440" Height="860"
+        MinWidth="1040" MinHeight="650"
         Background="#0E1014" Foreground="White"
         KeyDown="Window_KeyDown"
         Closing="Window_Closing">
@@ -17,25 +17,30 @@
         <Border x:Name="HeaderPanel" Grid.Row="0" Background="#171A20" Padding="12">
             <DockPanel LastChildFill="True">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <TextBlock Text="SanchesTV" FontSize="25" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,18,0"/>
+                    <StackPanel Margin="4,0,18,0" VerticalAlignment="Center">
+                        <TextBlock Text="SanchesTV" FontSize="25" FontWeight="Bold"/>
+                        <TextBlock Text="2.0 • Português" FontSize="10" Foreground="#7FC8FF"/>
+                    </StackPanel>
                     <Button Content="Todos" Click="All_Click"/>
+                    <Button Content="Brasil" Click="Brazil_Click"/>
+                    <Button Content="Portugal/Lusofonia" Click="Lusophone_Click"/>
                     <Button Content="Favoritos" Click="Favorites_Click"/>
                     <Button Content="Recentes" Click="Recent_Click"/>
                     <Button Content="Minha TV" Click="MyTv_Click"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="↻ Atualizar PT/BR" Click="SyncPortugueseCatalog_Click" ToolTip="Atualiza o catálogo português a partir de fontes públicas selecionadas no GitHub"/>
                     <Button Content="+ M3U arquivo" Click="ImportFile_Click"/>
                     <Button Content="+ M3U URL" Click="ImportUrl_Click"/>
                     <Button Content="+ Xtream" Click="Xtream_Click"/>
                     <Button Content="+ EPG" Click="ImportEpg_Click"/>
-                    <Button Content="Catálogo oficial" Click="BuiltIn_Click"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="LibraryColumn" Width="390"/>
+                <ColumnDefinition x:Name="LibraryColumn" Width="410"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -46,7 +51,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBox x:Name="SearchBox" Height="38" TextChanged="SearchBox_TextChanged" ToolTip="Buscar canal, categoria, estado ou região"/>
+                    <TextBox x:Name="SearchBox" Height="38" TextChanged="SearchBox_TextChanged" ToolTip="Buscar canal, categoria, país, estado ou região"/>
                     <ListBox x:Name="ChannelList" Grid.Row="1" Margin="0,10,0,8"
                              Background="#12151A" Foreground="White" BorderThickness="0"
                              MouseDoubleClick="ChannelList_MouseDoubleClick"
@@ -63,7 +68,8 @@
                                         <TextBlock Text="{Binding VirtualNumber}" Foreground="#8E97A6" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Category}" Foreground="#8E97A6" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Details}" Foreground="#8E97A6" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding SourceInfo}" Foreground="#667085" FontSize="10" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Text="{Binding FavoriteMark}" Foreground="#F5C451" FontSize="16" VerticalAlignment="Center"/>
                                     </Grid>
@@ -77,6 +83,7 @@
                             <Button Content="★ Favorito" Click="ToggleFavorite_Click"/>
                             <Button Content="+ Minha TV" Click="ToggleMyTv_Click"/>
                             <Button Content="Testar fonte" Click="HealthCheck_Click"/>
+                            <Button Content="Catálogo base" Click="BuiltIn_Click"/>
                         </WrapPanel>
                     </StackPanel>
                 </Grid>
