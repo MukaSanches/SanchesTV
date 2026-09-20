@@ -1,6 +1,8 @@
 using System.Windows;
 using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
+using SanchesTV.Core.Models;
+using SanchesTV.Desktop.Playback;
 
 namespace SanchesTV.Desktop.Windows;
 
@@ -10,7 +12,7 @@ public sealed class PipWindow : Window
     private readonly MediaPlayer _player;
     private readonly VideoView _view;
 
-    public PipWindow(Uri source)
+    public PipWindow(ChannelSource source)
     {
         Title = "SanchesTV — Picture in Picture";
         Width = 480;
@@ -27,7 +29,7 @@ public sealed class PipWindow : Window
 
         Loaded += (_, _) =>
         {
-            using var media = new Media(_libVlc, source, ":network-caching=1200", ":http-reconnect=true");
+            using var media = new Media(_libVlc, source.Url, VlcSourceOptions.Build(source));
             _player.Play(media);
         };
     }
