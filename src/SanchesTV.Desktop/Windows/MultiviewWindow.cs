@@ -19,7 +19,7 @@ public sealed class MultiviewWindow : Window
         Background = System.Windows.Media.Brushes.Black;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        Core.Initialize();
+        LibVLCSharp.Shared.Core.Initialize();
         _libVlc = new LibVLC("--no-video-title-show", "--quiet", "--avcodec-hw=any");
 
         var grid = new Grid();

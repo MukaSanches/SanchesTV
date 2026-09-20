@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using LibVLCSharp.Shared;
 using SanchesTV.Core.Catalog;
@@ -49,7 +50,7 @@ internal static class SelfTest
             if (epg.Count != 1)
                 return 13;
 
-            Core.Initialize();
+            LibVLCSharp.Shared.Core.Initialize();
             using var lib = new LibVLC("--no-video-title-show", "--quiet");
             using var player = new MediaPlayer(lib);
             _ = player.Volume;

@@ -19,7 +19,7 @@ public sealed class PipWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = System.Windows.Media.Brushes.Black;
 
-        Core.Initialize();
+        LibVLCSharp.Shared.Core.Initialize();
         _libVlc = new LibVLC("--no-video-title-show", "--quiet", "--avcodec-hw=any");
         _player = new MediaPlayer(_libVlc) { Volume = 70 };
         _view = new VideoView { MediaPlayer = _player };

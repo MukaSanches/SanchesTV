@@ -1,3 +1,4 @@
+using System.IO;
 using LibVLCSharp.Shared;
 using SanchesTV.Core.Playback;
 
@@ -19,7 +20,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
 
     public VlcPlaybackEngine()
     {
-        Core.Initialize();
+        LibVLCSharp.Shared.Core.Initialize();
         _libVlc = new LibVLC(
             "--no-video-title-show",
             "--quiet",
