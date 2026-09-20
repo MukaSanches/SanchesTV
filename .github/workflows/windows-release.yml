@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 35
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +44,8 @@ jobs:
       - name: Published app self-test
         shell: pwsh
         run: |
-          & ".\artifacts\publish\SanchesTV.exe" --self-test
-          if ($LASTEXITCODE -ne 0) { throw "Self-test failed with exit code $LASTEXITCODE" }
+          $p = Start-Process -FilePath ".\artifacts\publish\SanchesTV.exe" -ArgumentList "--self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Self-test failed with exit code $($p.ExitCode)" }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -71,8 +71,8 @@ jobs:
           $exe = Join-Path $installDir "SanchesTV.exe"
           if (-not (Test-Path $exe)) { throw "Installed executable not found." }
 
-          & $exe --self-test
-          if ($LASTEXITCODE -ne 0) { throw "Installed self-test failed with exit code $LASTEXITCODE" }
+          $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
+          if ($selfTest.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($selfTest.ExitCode)" }
 
           $uninstaller = Join-Path $installDir "unins000.exe"
           if (-not (Test-Path $uninstaller)) { throw "Uninstaller not found." }
@@ -93,3 +93,18 @@ jobs:
             artifacts/installer/SanchesTV-Setup-1.0.0-x64.exe
             artifacts/installer/SanchesTV-Setup-1.0.0-x64.exe.sha256
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $exe = ".\artifacts\installer\SanchesTV-Setup-1.0.0-x64.exe"
+          $sha = ".\artifacts\installer\SanchesTV-Setup-1.0.0-x64.exe.sha256"
+          gh release view v1.0.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload v1.0.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
+          } else {
+            gh release create v1.0.0 $exe $sha --target "$env:GITHUB_SHA" --title "SanchesTV 1.0.0" --notes "SanchesTV 1.0.0 para Windows x64. Build Release self-contained, testes automatizados, self-test do aplicativo publicado, instalação limpa, self-test pós-instalação e desinstalação validados no GitHub Actions."
+          }
