@@ -23,6 +23,7 @@ using SanchesTV.Desktop.Windows;
 using SanchesTV.Desktop.Tools;
 using SanchesTV.Desktop.Recording;
 using SanchesTV.Desktop.Diagnostics;
+using SanchesTV.Desktop.Infrastructure;
 
 namespace SanchesTV.Desktop;
 
@@ -34,7 +35,7 @@ public partial class MainWindow : Window
     };
 
     private readonly AppDatabase _db = new();
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
+    private readonly HttpClient _http = new(new ResilientHttpHandler()) { Timeout = TimeSpan.FromSeconds(45) };
     private readonly VlcPlaybackEngine _vlc = new();
     private readonly MpvPlaybackEngine _mpv = new();
     private readonly FfmpegRecorder _recorder = new();
