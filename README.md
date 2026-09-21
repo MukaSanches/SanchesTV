@@ -1,50 +1,62 @@
-# SanchesTV 2.0
+# SanchesTV 3.0
 
-SanchesTV é uma central de TV/IPTV para Windows, focada em conteúdo em português e em fontes gratuitas/públicas selecionadas, além das listas e credenciais fornecidas pelo próprio usuário.
+SanchesTV é uma central de TV/IPTV para Windows com foco em conteúdo em português.
 
-## Novidades da versão 2.0
+## V3 — IPTV aberto + Hub Premium
 
-- Catálogo PT/BR sincronizado automaticamente a partir de fontes GitHub selecionadas.
-- Atualização automática a cada 12 horas e atualização manual pelo botão **Atualizar PT/BR**.
-- Filtros rápidos **Brasil** e **Portugal/Lusofonia**.
-- Deduplicação por EPG ID e nome normalizado, preservando múltiplas URLs como fontes alternativas.
-- Suporte aos cabeçalhos M3U `http-user-agent`, `http-referrer` e `http-origin`.
-- Failover melhorado usando as fontes agregadas.
-- Migração não destrutiva do banco da V1 para a V2.
-- Contagem de canais e de fontes na interface.
+A versão 3 mantém todo o catálogo aberto/PT-BR da V2 e adiciona um Hub Premium para serviços oficiais de assinatura.
 
-### Fontes automáticas selecionadas
+### Provedores integrados no Hub Premium
 
-1. `joaoguidugli/FTA-IPTV-Brasil` — projeto focado em emissoras brasileiras FTA/gratuitas.
-2. `LITUATUI/M3UPT` — projeto que declara streams públicos/oficiais e conteúdo em português; o SanchesTV importa apenas entradas de TV ligadas à lusofonia.
-3. `Free-TV/IPTV` — projeto focado em canais gratuitos; o SanchesTV importa apenas grupos de países lusófonos.
+- Claro tv+
+- Zapping
+- SKY+
+- Vivo Play
+- Globoplay
 
-A pesquisa da V2 encontrou 182 entradas candidatas nessas fontes no snapshot de desenvolvimento, correspondendo a aproximadamente 163 identidades de canal antes dos testes de disponibilidade. Esses números mudam conforme os repositórios são atualizados.
+O Hub Premium mantém um diretório pesquisável de canais e abre o serviço oficial correspondente para autenticação e reprodução protegida.
 
-Listas amplas que misturam emissoras abertas com canais premium não são importadas automaticamente.
+### Exemplos de canais presentes no diretório premium
 
-## Recursos mantidos
+- ESPN, ESPN 2, ESPN 3 e ESPN 4
+- TNT, TNT Séries, TNT Novelas, Warner Channel, Space e Cinemax
+- Discovery Channel, Discovery Home & Health, Discovery Kids, ID, Food Network e HGTV
+- History, History 2, A&E, AXN, Sony Channel, Sony Movies e Paramount Network
+- Cartoon Network, Cartoonito, Nickelodeon, Nick Jr., Tooncast, Adult Swim e TV Rá Tim Bum
+- GloboNews, Multishow, GNT, sportv, Canal Brasil, Canal OFF e Gloob
+- Telecine e Premiere por provedores que os comercializam como adicionais/assinaturas compatíveis
 
-- Player baseado em LibVLC com aceleração de hardware quando disponível.
-- M3U/M3U8 por arquivo ou URL.
+## Política de conteúdo premium
+
+O SanchesTV não distribui URLs clandestinas de canais pagos, credenciais de terceiros, chaves DRM ou técnicas de bypass. O assinante usa sua própria conta no provedor oficial.
+
+## Catálogo aberto mantido da V2
+
+- Sincronização PT/BR automática a cada 12 horas.
+- Fontes selecionadas: FTA-IPTV-Brasil, M3UPT e Free-TV/IPTV.
+- Deduplicação e múltiplas fontes por canal.
+- User-Agent, Referer e Origin de M3U preservados.
+- Filtros Brasil e Portugal/Lusofonia.
+
+## Recursos gerais
+
+- LibVLC com aceleração de hardware.
+- M3U/M3U8 arquivo/URL.
 - Xtream do próprio usuário.
-- XMLTV/EPG por arquivo ou URL.
+- XMLTV/EPG.
 - Favoritos, Recentes e Minha TV.
-- Pesquisa por canal, categoria, país, estado e região.
-- Health-check HTTP/HTTPS.
-- Picture-in-Picture.
-- Multiview de até quatro canais.
-- Gravação TS quando a fonte permitir.
-- Pause/seek/timeshift quando a transmissão expuser seek.
-- Controle remoto pelo navegador do celular via rede local e QR Code.
+- Pesquisa.
+- Failover.
+- Health-check.
+- PiP.
+- Multiview.
+- Gravação.
+- Seek/timeshift quando suportado.
+- Controle remoto via celular.
 - Diagnóstico técnico.
-- SQLite local.
+- SQLite.
 - Instalador Windows x64 self-contained.
-
-## Segurança e conteúdo
-
-O SanchesTV não incorpora credenciais de terceiros e não implementa bypass de DRM, paywall ou autenticação. O catálogo automático é limitado a fontes que se apresentam como gratuitas, FTA, públicas ou oficiais e ainda passa por filtragem de país/idioma no aplicativo.
 
 ## Build
 
-O GitHub Actions executa restore, build, testes, publish self-contained, self-test, criação do instalador, instalação limpa, self-test instalado, desinstalação, SHA-256 e publicação da release.
+O GitHub Actions executa restore, build, testes, publish, self-test, criação do instalador, instalação limpa, self-test instalado, desinstalação, SHA-256 e publicação da release.
