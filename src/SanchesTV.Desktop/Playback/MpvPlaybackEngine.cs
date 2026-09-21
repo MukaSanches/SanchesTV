@@ -1,3 +1,4 @@
+using System.IO;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using SanchesTV.Core.Models;
@@ -10,6 +11,31 @@ public enum PlaybackQualityProfile
     MaximumQuality,
     LowLatency,
     LowPower
+}
+
+public enum DeinterlaceMode
+{
+    Auto,
+    Off,
+    On
+}
+
+public enum ToneMappingMode
+{
+    Auto,
+    Bt2390,
+    Bt2446A,
+    Reinhard,
+    Mobius,
+    Hable
+}
+
+public enum AudioEnhancementMode
+{
+    Flat,
+    Normalize,
+    Night,
+    Dialogue
 }
 
 public sealed class MpvPlaybackEngine : IAsyncDisposable
@@ -32,6 +58,12 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
     public ChannelSource? CurrentChannelSource { get; private set; }
     public PlaybackQualityProfile Profile { get; private set; } = PlaybackQualityProfile.Balanced;
     public bool ExclusiveAudio { get; private set; }
+    public DeinterlaceMode Deinterlace { get; private set; } = DeinterlaceMode.Auto;
+    public ToneMappingMode ToneMapping { get; private set; } = ToneMappingMode.Bt2390;
+    public AudioEnhancementMode AudioEnhancement { get; private set; } = AudioEnhancementMode.Flat;
+    public bool FrameInterpolation { get; private set; }
+    public string PreferredAudioLanguages { get; private set; } = "pt-BR,pt,por,en,eng";
+    public string PreferredSubtitleLanguages { get; private set; } = "pt-BR,pt,por,en,eng";
 
     public event EventHandler<string>? PlaybackError;
 
@@ -121,6 +153,7 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
         ApplyProfile(Profile);
         ConfigureHttpHeaders(source);
         ConfigureSourceBuffering(source);
+        ApplyAdvancedMediaOptions();
 
         TaskCompletionSource<bool> signal;
         lock (_gate)
@@ -315,6 +348,136 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
         }
 
         Set("audio-exclusive", ExclusiveAudio ? "yes" : "no");
+        ApplyAdvancedMediaOptions();
+    }
+
+    public Task SetAdvancedMediaAsync(
+        DeinterlaceMode deinterlace,
+        ToneMappingMode toneMapping,
+        AudioEnhancementMode audioEnhancement,
+        bool interpolation,
+        string? audioLanguages = null,
+        string? subtitleLanguages = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Deinterlace = deinterlace;
+        ToneMapping = toneMapping;
+        AudioEnhancement = audioEnhancement;
+        FrameInterpolation = interpolation;
+
+        if (!string.IsNullOrWhiteSpace(audioLanguages))
+            PreferredAudioLanguages = audioLanguages.Trim();
+        if (!string.IsNullOrWhiteSpace(subtitleLanguages))
+            PreferredSubtitleLanguages = subtitleLanguages.Trim();
+
+        if (_context != IntPtr.Zero)
+            ApplyAdvancedMediaOptions();
+
+        return Task.CompletedTask;
+    }
+
+    private void ApplyAdvancedMediaOptions()
+    {
+        if (_context == IntPtr.Zero)
+            return;
+
+        Set("deinterlace", Deinterlace switch
+        {
+            DeinterlaceMode.On => "yes",
+            DeinterlaceMode.Off => "no",
+            _ => "auto"
+        });
+
+        Set("tone-mapping", ToneMapping switch
+        {
+            ToneMappingMode.Bt2390 => "bt.2390",
+            ToneMappingMode.Bt2446A => "bt.2446a",
+            ToneMappingMode.Reinhard => "reinhard",
+            ToneMappingMode.Mobius => "mobius",
+            ToneMappingMode.Hable => "hable",
+            _ => "auto"
+        });
+
+        Set("interpolation", FrameInterpolation ? "yes" : "no");
+        if (FrameInterpolation)
+        {
+            Set("video-sync", "display-resample");
+            Set("tscale", "oversample");
+        }
+
+        Set("alang", PreferredAudioLanguages);
+        Set("slang", PreferredSubtitleLanguages);
+        Set("audio-normalize-downmix", "yes");
+
+        var filter = AudioEnhancement switch
+        {
+            AudioEnhancementMode.Normalize =>
+                "lavfi=[dynaudnorm=f=250:g=15:p=0.95]",
+            AudioEnhancementMode.Night =>
+                "lavfi=[acompressor=threshold=0.125:ratio=4:attack=20:release=250:makeup=2]",
+            AudioEnhancementMode.Dialogue =>
+                "lavfi=[equalizer=f=2500:t=q:w=1:g=4,equalizer=f=4000:t=q:w=1:g=2]",
+            _ => ""
+        };
+        Set("af", filter);
+    }
+
+    public Task CycleAudioTrackAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        MpvNative.TryCommand(_context, "cycle audio");
+        return Task.CompletedTask;
+    }
+
+    public Task CycleSubtitleTrackAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        MpvNative.TryCommand(_context, "cycle sub");
+        return Task.CompletedTask;
+    }
+
+    public Task ToggleSubtitlesAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        MpvNative.TryCommand(_context, "cycle sub-visibility");
+        return Task.CompletedTask;
+    }
+
+    public Task SetAudioDelayAsync(double seconds, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        Set("audio-delay", seconds.ToString("0.###", CultureInfo.InvariantCulture));
+        return Task.CompletedTask;
+    }
+
+    public Task SetSubtitleDelayAsync(double seconds, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        Set("sub-delay", seconds.ToString("0.###", CultureInfo.InvariantCulture));
+        return Task.CompletedTask;
+    }
+
+    public Task<string> TakeScreenshotAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+
+        var dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            "SanchesTV");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, $"SanchesTV-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+        var escaped = MpvNative.EscapeCommandArgument(path);
+        if (!MpvNative.TryCommand(_context, $"screenshot-to-file \"{escaped}\" video"))
+            throw new InvalidOperationException("O libmpv não conseguiu gerar a captura.");
+
+        return Task.FromResult(path);
     }
 
     private void Set(string name, string value) =>
@@ -340,6 +503,12 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
             $"HDR primaries: {GetProperty("video-params/primaries") ?? "n/a"}",
             $"Transfer: {GetProperty("video-params/gamma") ?? "n/a"}",
             $"Perfil: {Profile}",
+            $"Deinterlace: {Deinterlace}",
+            $"Tone mapping: {ToneMapping}",
+            $"Interpolação: {(FrameInterpolation ? "sim" : "não")}",
+            $"Áudio: {AudioEnhancement}",
+            $"Idioma áudio: {PreferredAudioLanguages}",
+            $"Idioma legenda: {PreferredSubtitleLanguages}",
             $"WASAPI exclusivo: {(ExclusiveAudio ? "sim" : "não")}");
     }
 
