@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
-        Title="SanchesTV 2.0" Width="1440" Height="860"
+        Title="SanchesTV 3.0" Width="1440" Height="860"
         MinWidth="1040" MinHeight="650"
         Background="#0E1014" Foreground="White"
         KeyDown="Window_KeyDown"
@@ -19,11 +19,12 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                     <StackPanel Margin="4,0,18,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="25" FontWeight="Bold"/>
-                        <TextBlock Text="2.0 • Português" FontSize="10" Foreground="#7FC8FF"/>
+                        <TextBlock Text="3.0 • Português + Premium" FontSize="10" Foreground="#7FC8FF"/>
                     </StackPanel>
                     <Button Content="Todos" Click="All_Click"/>
                     <Button Content="Brasil" Click="Brazil_Click"/>
                     <Button Content="Portugal/Lusofonia" Click="Lusophone_Click"/>
+                    <Button Content="Premium" Click="Premium_Click" ToolTip="Abrir Hub Premium PT-BR"/>
                     <Button Content="Favoritos" Click="Favorites_Click"/>
                     <Button Content="Recentes" Click="Recent_Click"/>
                     <Button Content="Minha TV" Click="MyTv_Click"/>
