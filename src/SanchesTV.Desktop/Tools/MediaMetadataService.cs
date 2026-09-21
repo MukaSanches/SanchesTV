@@ -19,13 +19,15 @@ public sealed class MediaMetadataService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        var durationText = p.Duration.ToString(@"hh\:mm\:ss");
+
         return string.Join(Environment.NewLine,
             $"Arquivo: {Path.GetFileName(path)}",
             $"Título: {Value(t.Title)}",
             $"Artista: {Value(t.FirstPerformer)}",
             $"Álbum: {Value(t.Album)}",
             $"Ano: {(t.Year == 0 ? "?" : t.Year)}",
-            $"Duração: {p.Duration:hh\:mm\:ss}",
+            $"Duração: {durationText}",
             $"Vídeo: {p.VideoWidth}×{p.VideoHeight}",
             $"Áudio: {p.AudioChannels} canais • {p.AudioSampleRate} Hz • {p.AudioBitrate} kb/s",
             $"Codecs: {(codecs.Length == 0 ? "?" : string.Join(", ", codecs))}");
