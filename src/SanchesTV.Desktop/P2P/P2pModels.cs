@@ -9,8 +9,13 @@ public sealed class P2pSettings
     public int MaxCacheGb { get; set; } = 10;
     public int MaxUploadKibPerSecond { get; set; } = 512;
     public bool KeepDownloadedData { get; set; }
-    public bool AllowPortForwarding { get; set; }
+    public bool AllowPortForwarding { get; set; } = true;
     public bool PrebufferBeforePlay { get; set; } = true;
+    public int InitialBufferMb { get; set; } = 24;
+    public int MetadataTimeoutSeconds { get; set; } = 60;
+    public int StartBufferTimeoutSeconds { get; set; } = 120;
+    public int StallRecoverySeconds { get; set; } = 12;
+    public bool AutoRecovery { get; set; } = true;
 }
 
 public sealed class P2pFileItem
@@ -39,7 +44,10 @@ public sealed record P2pSessionStats(
     long Downloaded,
     long Uploaded,
     double SelectedProgress,
-    long CacheBytes)
+    long CacheBytes,
+    string Health,
+    int RecoveryCount,
+    string LastRecovery)
 {
     public string DownloadRateText => P2pMediaPolicy.FormatBytes(DownloadRate) + "/s";
     public string UploadRateText => P2pMediaPolicy.FormatBytes(UploadRate) + "/s";
