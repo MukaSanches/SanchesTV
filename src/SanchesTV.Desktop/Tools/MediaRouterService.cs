@@ -14,6 +14,7 @@ public sealed record MediaRouterSession(
     Uri WebRtcUrl,
     Uri RtmpUrl,
     Uri SrtUrl,
+    Uri MoqUrl,
     bool LanEnabled);
 
 public sealed class MediaRouterService : IAsyncDisposable
@@ -91,6 +92,13 @@ rtmp: true
 rtmpAddress: {bind}:1935
 srt: true
 srtAddress: {bind}:8890
+moq: true
+moqHTTP2Address: {bind}:8892
+moqHTTP3Address: {bind}:8892
+moqQUICAddress: {bind}:8893
+moqServerKey: auto.key
+moqServerCert: auto.crt
+moqAllowOrigins: ["*"]
 
 paths:
   all_others:
@@ -132,6 +140,7 @@ paths:
             new Uri($"http://{host}:8889/{pathName}"),
             new Uri($"rtmp://{host}:1935/{pathName}"),
             new Uri($"srt://{host}:8890?streamid=read:{pathName}"),
+            new Uri($"https://{host}:8892/{pathName}"),
             enableLan);
         return Current;
     }
