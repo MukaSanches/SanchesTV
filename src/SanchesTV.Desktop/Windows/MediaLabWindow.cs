@@ -18,6 +18,7 @@ public sealed class MediaLabWindow : Window
     private readonly HardwareMonitorService _hardware;
     private readonly DlnaCastService _dlna = new();
     private readonly AdvancedMediaProcessor _processor;
+    private readonly HyperionService _hyperion;
     private readonly OnnxModelInspector _onnx = new();
     private readonly AppUpdateService _updates = new();
 
@@ -95,6 +96,7 @@ public sealed class MediaLabWindow : Window
         tabs.Items.Add(BuildAnalysisTab());
         tabs.Items.Add(BuildProcessingTab());
         tabs.Items.Add(BuildSubtitleTab());
+        tabs.Items.Add(BuildAmbientTab());
         tabs.Items.Add(BuildAiTab());
         tabs.Items.Add(BuildUpdateTab());
         tabs.Items.Add(BuildRuntimeTab());
@@ -252,6 +254,8 @@ public sealed class MediaLabWindow : Window
         actions.Children.Add(Button("Analisar loudness", Loudness_Click));
         actions.Children.Add(Button("Normalizar EBU R128", Normalize_Click));
         actions.Children.Add(Button("Processar vídeo Cinema", Enhance_Click));
+        actions.Children.Add(Button("Upscale IA 2×", Upscale_Click));
+        actions.Children.Add(Button("Interpolar RIFE 2× FPS", Rife_Click));
         actions.Children.Add(Button("Comparar VMAF", Vmaf_Click));
         panel.Children.Add(actions);
 
@@ -308,6 +312,33 @@ public sealed class MediaLabWindow : Window
         if (path is null) return;
         await RunToOutputAsync(
             "RIFE: interpolando para 2x FPS. O processamento é offline e pode demorar...",
+            ct => _processor.InterpolateVideo2xAsync(path, ct));
+    }
+
+    private async void Upscale_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+
+        var anime = MessageBox.Show(
+            this,
+            "Usar o modelo otimizado para anime/animação?",
+            "Real-ESRGAN",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question) == MessageBoxResult.Yes;
+
+        await RunToOutputAsync(
+            "Real-ESRGAN Vulkan fazendo upscale 2×. Esta operação pode ser demorada...",
+            ct => _processor.UpscaleVideo2xAsync(path, anime, ct));
+    }
+
+    private async void Rife_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+
+        await RunToOutputAsync(
+            "RIFE Vulkan interpolando quadros para 2× FPS. Esta operação pode ser demorada...",
             ct => _processor.InterpolateVideo2xAsync(path, ct));
     }
 
