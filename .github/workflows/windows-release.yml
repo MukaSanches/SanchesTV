@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer\SanchesTV.iss"
-          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe")) {
+          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe")) {
             throw "Installer was not generated."
           }
 
@@ -64,7 +64,7 @@ jobs:
         run: |
           $installDir = Join-Path $env:RUNNER_TEMP "SanchesTV-CleanInstall"
           New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe"
+          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe"
           $process = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$installDir" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer returned $($process.ExitCode)" }
 
@@ -82,16 +82,16 @@ jobs:
       - name: SHA-256
         shell: pwsh
         run: |
-          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe" -Algorithm SHA256).Hash
-          "$hash  SanchesTV-Setup-2.0.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe.sha256" -Encoding ascii
+          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe" -Algorithm SHA256).Hash
+          "$hash  SanchesTV-Setup-3.0.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe.sha256" -Encoding ascii
           Write-Host "SHA256=$hash"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SanchesTV-Setup-2.0.0-x64
+          name: SanchesTV-Setup-3.0.0-x64
           path: |
-            artifacts/installer/SanchesTV-Setup-2.0.0-x64.exe
-            artifacts/installer/SanchesTV-Setup-2.0.0-x64.exe.sha256
+            artifacts/installer/SanchesTV-Setup-3.0.0-x64.exe
+            artifacts/installer/SanchesTV-Setup-3.0.0-x64.exe.sha256
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -100,11 +100,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $exe = ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe"
-          $sha = ".\artifacts\installer\SanchesTV-Setup-2.0.0-x64.exe.sha256"
-          gh release view v2.0.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          $exe = ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe"
+          $sha = ".\artifacts\installer\SanchesTV-Setup-3.0.0-x64.exe.sha256"
+          gh release view v3.0.0 --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload v2.0.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
+            gh release upload v3.0.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
           } else {
-            gh release create v2.0.0 $exe $sha --target "$env:GITHUB_SHA" --title "SanchesTV 2.0.0" --notes "SanchesTV 2.0.0 para Windows x64. Build Release self-contained, testes automatizados, self-test do aplicativo publicado, instalação limpa, self-test pós-instalação e desinstalação validados no GitHub Actions."
+            gh release create v3.0.0 $exe $sha --target "$env:GITHUB_SHA" --title "SanchesTV 3.0.0" --notes "SanchesTV 3.0.0 para Windows x64. Build Release self-contained, testes automatizados, self-test do aplicativo publicado, instalação limpa, self-test pós-instalação e desinstalação validados no GitHub Actions."
           }
