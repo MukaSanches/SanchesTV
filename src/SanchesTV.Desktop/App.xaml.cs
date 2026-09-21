@@ -131,8 +131,17 @@ internal static class SelfTest
             try { File.Delete(temp); } catch { }
             return 0;
         }
-        catch
+        catch (Exception ex)
         {
+            try
+            {
+                File.WriteAllText(
+                    Path.Combine(AppContext.BaseDirectory, "selftest-error.txt"),
+                    ex.ToString());
+            }
+            catch
+            {
+            }
             return 99;
         }
     }
