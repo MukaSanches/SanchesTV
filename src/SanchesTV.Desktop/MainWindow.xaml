@@ -509,7 +509,7 @@
                                 </Grid.RowDefinitions>
 
                                 <Grid Background="Black">
-                                    <playback:MpvHost x:Name="MpvSurface" Background="Black"/>
+                                    <playback:MpvHost x:Name="MpvSurface"/>
                                     <vlc:VideoView x:Name="VideoView" Background="Black" Visibility="Collapsed"/>
                                     <Border x:Name="VideoDoubleClickSurface"
                                             Background="#01000000"
