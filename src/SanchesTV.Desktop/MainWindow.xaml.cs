@@ -14,11 +14,14 @@ using SanchesTV.Core.Layout;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
+using SanchesTV.Core.Search;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.P2P;
 using SanchesTV.Desktop.Remote;
 using SanchesTV.Desktop.Windows;
+using SanchesTV.Desktop.Tools;
+using SanchesTV.Desktop.Recording;
 
 namespace SanchesTV.Desktop;
 
@@ -36,6 +39,9 @@ public partial class MainWindow : Window
     private readonly FfmpegRecorder _recorder = new();
     private readonly WindowsAudioService _audio = new();
     private readonly P2pStreamingService _p2p = new();
+    private readonly MediaToolsService _mediaTools = new();
+    private readonly MediaRouterService _mediaRouter;
+    private readonly RecordingSchedulerService _recordingScheduler;
     private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RemoteControlServer? _remote;
     private P2pStreamingWindow? _p2pWindow;
@@ -55,6 +61,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        _mediaRouter = new MediaRouterService(_mediaTools);
+        _recordingScheduler = new RecordingSchedulerService(_db);
+        _recordingScheduler.StatusChanged += (_, message) => Dispatcher.Invoke(() =>
+        {
+            StatusText.Text = message;
+            TitleStatusText.Text = "Gravação programada";
+        });
+        _recordingScheduler.Start();
 
         VideoView.Loaded += (_, _) => VideoView.MediaPlayer = _vlc.MediaPlayer;
 
@@ -187,7 +202,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 6.1.1...");
+            SetBusy(true, "Inicializando SanchesTV 7...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -273,7 +288,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
-                    "Catálogo SanchesTV 6.1.1",
+                    "Catálogo SanchesTV 7",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -355,12 +370,17 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(normalized))
         {
             query = query.Where(c =>
-                c.NormalizedName.Contains(normalized, StringComparison.Ordinal) ||
-                TextNormalizer.Normalize(c.Category ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
-                TextNormalizer.Normalize(c.Country ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
-                TextNormalizer.Normalize(c.State ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
-                TextNormalizer.Normalize(c.Region ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
-                c.Sources.Any(s => TextNormalizer.Normalize(s.Provider).Contains(normalized, StringComparison.Ordinal)));
+                FuzzyMatcher.IsMatch(
+                    normalized,
+                    c.Name,
+                    c.NormalizedName,
+                    c.Category,
+                    c.Country,
+                    c.Language,
+                    c.State,
+                    c.Region,
+                    c.EpgId,
+                    string.Join(" ", c.Sources.Select(s => s.Provider))));
         }
 
         _visibleItems = query.Select(c => new ChannelListItem(c)).ToList();
@@ -613,6 +633,30 @@ public partial class MainWindow : Window
 
     private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) =>
         await SyncCatalogAsync(true);
+
+    private void MediaLab_Click(object sender, RoutedEventArgs e)
+    {
+        new MediaLabWindow(_mediaTools, _mediaRouter, () => _activeSource)
+        {
+            Owner = this
+        }.Show();
+    }
+
+    private void EpgGuide_Click(object sender, RoutedEventArgs e)
+    {
+        var channel = SelectedChannel ?? _currentChannel;
+        if (channel is null)
+        {
+            MessageBox.Show(this, "Selecione ou reproduza um canal primeiro.",
+                "Guia de programação", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        new EpgGuideWindow(_db, _recordingScheduler, channel)
+        {
+            Owner = this
+        }.Show();
+    }
 
     private void P2p_Click(object sender, RoutedEventArgs e)
     {
@@ -1195,7 +1239,7 @@ public partial class MainWindow : Window
 
         var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 6.1.1\n" +
+            $"SanchesTV: 7.0.0\n" +
             $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
             $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
@@ -1207,7 +1251,7 @@ public partial class MainWindow : Window
             $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";
 
-        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6.1.1", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, text, "Diagnóstico SanchesTV 7", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -1345,6 +1389,8 @@ public partial class MainWindow : Window
             await _remote.DisposeAsync();
 
         _recorder.Dispose();
+        await _mediaRouter.DisposeAsync();
+        await _recordingScheduler.DisposeAsync();
         await _p2p.DisposeAsync();
         await _mpv.DisposeAsync();
         await _vlc.DisposeAsync();
