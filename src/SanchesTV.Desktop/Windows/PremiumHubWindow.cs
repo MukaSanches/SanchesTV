@@ -18,7 +18,7 @@ public sealed class PremiumHubWindow : Window
 
     public PremiumHubWindow()
     {
-        Title = "SanchesTV 3.0 — Hub Premium PT-BR";
+        Title = "SanchesTV 5.0 — Hub Premium PT-BR";
         Width = 1180;
         Height = 760;
         MinWidth = 900;
