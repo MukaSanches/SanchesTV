@@ -5,17 +5,13 @@ namespace SanchesTV.Core.Parsing;
 
 public static class M3uParser
 {
-    private static readonly Regex AttributeRegex = new(@"(?<key>[w-]+)=""(?<value>[^""]*)""", RegexOptions.Compiled);
-    private static readonly Regex EpgSuffixRegex = new(@"(@(?:SD|HD|FHD|4K)|(m3u4u))$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex AttributeRegex = new(@"(?<key>[\w-]+)=""(?<value>[^""]*)""", RegexOptions.Compiled);
+    private static readonly Regex EpgSuffixRegex = new(@"(@(?:SD|HD|FHD|4K)|\(m3u4u\))$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static IReadOnlyList<Channel> Parse(string text, string provider = "M3U")
     {
-        var lines = text.Replace("
-", "
-").Replace('', '
-')
-            .Split('
-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var channels = new List<Channel>();
         string? info = null;
@@ -42,6 +38,7 @@ public static class M3uParser
                 {
                     var key = option[..equals].Trim();
                     var value = option[(equals + 1)..].Trim().Trim('"');
+
                     if (key.Equals("http-user-agent", StringComparison.OrdinalIgnoreCase))
                         userAgent = value;
                     else if (key.Equals("http-referrer", StringComparison.OrdinalIgnoreCase))
@@ -49,6 +46,7 @@ public static class M3uParser
                     else if (key.Equals("http-origin", StringComparison.OrdinalIgnoreCase))
                         origin = value;
                 }
+
                 continue;
             }
 
@@ -59,12 +57,19 @@ public static class M3uParser
                 continue;
 
             var attributes = AttributeRegex.Matches(info)
-                .ToDictionary(m => m.Groups["key"].Value, m => m.Groups["value"].Value, StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(
+                    m => m.Groups["key"].Value,
+                    m => m.Groups["value"].Value,
+                    StringComparer.OrdinalIgnoreCase);
 
             var comma = info.LastIndexOf(',');
             var displayName = comma >= 0 ? info[(comma + 1)..].Trim() : "Canal";
-            if (attributes.TryGetValue("tvg-name", out var tvgName) && !string.IsNullOrWhiteSpace(tvgName))
+
+            if (attributes.TryGetValue("tvg-name", out var tvgName) &&
+                !string.IsNullOrWhiteSpace(tvgName))
+            {
                 displayName = tvgName.Trim();
+            }
 
             var epgId = CanonicalizeEpgId(attributes.GetValueOrDefault("tvg-id"));
             var country = NormalizeCountry(attributes.GetValueOrDefault("tvg-country"));
@@ -115,14 +120,16 @@ public static class M3uParser
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
-        var first = value.Split(';', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+
+        var first = value
+            .Split(';', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
         return string.IsNullOrWhiteSpace(first) ? null : first.ToUpperInvariant();
     }
 
     private static string? NormalizeLanguage(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-        return value.Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
