@@ -47,6 +47,7 @@ public sealed class MediaLabWindow : Window
         _sourceProvider = sourceProvider;
         _hardware = hardware;
         _processor = new AdvancedMediaProcessor(tools);
+        _hyperion = new HyperionService(tools);
 
         Title = "SanchesTV 7 — Media Lab";
         Width = 900;
@@ -59,6 +60,7 @@ public sealed class MediaLabWindow : Window
 
         Content = BuildUi();
         Loaded += async (_, _) => await RefreshStatusAsync();
+        Closed += async (_, _) => await _hyperion.DisposeAsync();
     }
 
     private UIElement BuildUi()
@@ -291,6 +293,24 @@ public sealed class MediaLabWindow : Window
         await RunToOutputAsync("Processando vídeo...", ct => _processor.EnhanceVideoAsync(path, ct));
     }
 
+    private async void UpscaleVideo_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+        await RunToOutputAsync(
+            "Real-ESRGAN: extraindo frames e fazendo upscale 2x. Pode usar bastante GPU e disco...",
+            ct => _processor.UpscaleVideo2xAsync(path, anime: false, ct));
+    }
+
+    private async void RifeVideo_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+        await RunToOutputAsync(
+            "RIFE: interpolando para 2x FPS. O processamento é offline e pode demorar...",
+            ct => _processor.InterpolateVideo2xAsync(path, ct));
+    }
+
     private async void Vmaf_Click(object sender, RoutedEventArgs e)
     {
         var reference = PickMediaFile();
@@ -359,6 +379,39 @@ public sealed class MediaLabWindow : Window
         });
 
         return new TabItem { Header = "Atualizações", Content = Scroll(panel) };
+    }
+
+    private async void StartHyperion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _status.Text = "Iniciando Hyperion.NG...";
+            await _hyperion.StartAsync();
+            _status.Text = "Hyperion ativo.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Hyperion: " + ex.Message;
+        }
+    }
+
+    private void OpenHyperion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _hyperion.OpenWebUi();
+            _status.Text = "Painel Hyperion aberto no navegador.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Hyperion: " + ex.Message;
+        }
+    }
+
+    private async void StopHyperion_Click(object sender, RoutedEventArgs e)
+    {
+        await _hyperion.StopAsync();
+        _status.Text = "Hyperion parado.";
     }
 
     private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
