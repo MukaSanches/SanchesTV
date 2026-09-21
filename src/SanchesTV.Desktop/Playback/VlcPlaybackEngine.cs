@@ -151,7 +151,7 @@ public sealed class VlcPlaybackEngine : IPlaybackEngine
 
         Directory.CreateDirectory(directory);
         var file = Path.Combine(directory, $"SanchesTV-{DateTime.Now:yyyyMMdd-HHmmss}.ts");
-        var escaped = file.Replace("\", "/");
+        var escaped = file.Replace("\\", "/");
 
         var options = VlcSourceOptions.Build(
             source,
