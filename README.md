@@ -1,8 +1,8 @@
-# SanchesTV 7.0 — Media Platform
+# SanchesTV 7.0.1 — Media Platform
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 
-A V7 preserva a base estável da linha 6.x e acrescenta módulos isolados para vídeo avançado, áudio, broadcast, gravação, transmissão para outros dispositivos, processamento offline e atualização incremental.
+A V7.0.1 preserva a base estável da linha 6.x e acrescenta módulos isolados para vídeo avançado, áudio, broadcast, gravação, transmissão para outros dispositivos, processamento offline e atualização incremental.
 
 ## Cinema Engine
 
