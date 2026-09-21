@@ -412,9 +412,10 @@ public sealed class P2pStreamingWindow : Window
             " / limite " + _service.Settings.MaxCacheGb + " GB • " + _service.CacheRoot;
     }
 
-    private void SetBusy(bool busy, string text)
+    private void SetBusy(bool busy, string? text = null)
     {
-        _status.Text = text;
+        if (text is not null)
+            _status.Text = text;
         Cursor = busy ? Cursors.Wait : Cursors.Arrow;
         _play.IsEnabled = !busy && _service.Files.Count > 0;
     }

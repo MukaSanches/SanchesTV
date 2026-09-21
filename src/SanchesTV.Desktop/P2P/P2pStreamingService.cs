@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using System.Net;
 using System.Net.Sockets;
@@ -73,7 +74,10 @@ public sealed class P2pStreamingService : IAsyncDisposable
             async (engine, savePath) => await engine.AddStreamingAsync(
                 magnet,
                 savePath,
-                new TorrentSettings() with { CreateContainingDirectory = true }),
+                new TorrentSettingsBuilder
+                {
+                    CreateContainingDirectory = true
+                }.ToSettings()),
             cancellationToken);
     }
 
@@ -246,7 +250,7 @@ public sealed class P2pStreamingService : IAsyncDisposable
 
         var httpPort = GetFreeLoopbackPort();
 
-        var settings = new EngineSettings() with
+        var settings = new EngineSettingsBuilder
         {
             AllowLocalPeerDiscovery = false,
             AllowPortForwarding = Settings.AllowPortForwarding,
@@ -255,18 +259,18 @@ public sealed class P2pStreamingService : IAsyncDisposable
             AutoSaveLoadMagnetLinkMetadata = true,
             CacheDirectory = _cache.EngineCacheRoot,
             DiskCacheBytes = 64 * 1024 * 1024,
-            EnableDht = true,
+            DhtEndPoint = new IPEndPoint(IPAddress.Any, 0),
             HttpStreamingPrefix = "http://127.0.0.1:" + httpPort + "/",
             ListenEndPoints = new Dictionary<string, IPEndPoint>
             {
                 ["ipv4"] = new(IPAddress.Any, 0)
-            }.ToImmutableDictionary(),
+            },
             MaximumConnections = 250,
             MaximumDownloadRate = 0,
             MaximumUploadRate = Settings.MaxUploadKibPerSecond <= 0
                 ? 0
                 : Settings.MaxUploadKibPerSecond * 1024
-        };
+        }.ToSettings();
 
         _engine = new ClientEngine(settings);
     }
