@@ -1,45 +1,66 @@
-# SanchesTV 4.0
+# SanchesTV 5.0
 
-SanchesTV 4.0 amplia o catálogo automático em português e mantém todos os recursos das versões anteriores, inclusive o Hub Premium oficial da V3.
+SanchesTV 5.0 é uma central de TV/IPTV para Windows com foco em português, catálogo aberto agregado e acesso oficial a serviços premium do usuário.
 
-## Catálogo automático pré-configurado
+## Interface Fluent Cinema
 
-A V4 já vem com 6 fontes remotas cadastradas e sincroniza no primeiro início:
+A V5 reestrutura completamente a interface sem trocar o motor de reprodução já validado. O visual segue princípios atuais do Windows 11: Mica, navegação lateral, title bar integrada, hierarquia por superfícies, cards, miniaturas e player central.
 
-1. IPTV-org — Brasil: `https://iptv-org.github.io/iptv/countries/br.m3u`
-2. IPTV-org — Português: `https://iptv-org.github.io/iptv/languages/por.m3u`
-3. IPTV-org — Portugal: `https://iptv-org.github.io/iptv/countries/pt.m3u`
-4. M3UPT Portugal/Lusofonia: arquivo oficial `M3U/M3UPT.m3u` do repositório `LITUATUI/M3UPT`
-5. FTA IPTV Brasil
-6. Free-TV Brasil/Portugal
+### Identidade visual
 
-O primeiro início da V4 força nova sincronização. Depois, o catálogo atualiza automaticamente a cada 12 horas.
+- Logo vetorial próprio SanchesTV: bloco em gradiente violeta/azul com monograma `S` e símbolo de play.
+- Title bar personalizada.
+- Mica/DWM no Windows 11, com fallback sólido quando indisponível.
+- Home cinematográfica com hero.
+- Miniaturas/logos vindos de `tvg-logo`.
+- Placeholder visual quando a fonte não possui logo.
+- Seções `Continuar assistindo`, `Brasil em destaque` e `Filmes`.
 
-## Agregação
+### Navegação principal
 
-- EPG ID e nome normalizado reduzem duplicatas.
-- URLs diferentes do mesmo canal são preservadas como fontes alternativas.
-- User-Agent, Referer e Origin presentes nas playlists são preservados.
-- Se uma fonte remota falhar, o banco existente não é apagado.
-- O botão `Atualizar 6 fontes PT/BR` permite atualização manual.
+- Início
+- Ao vivo
+- Filmes
+- Brasil
+- Português
+- Premium oficial
+- Favoritos
+- Minha TV
+- Recentes
 
-## Premium
+## Fontes automáticas
 
-O Hub Premium continua com acesso oficial a Claro tv+, Zapping, SKY+, Vivo TV e Globoplay. O SanchesTV não incorpora credenciais de terceiros, chaves DRM ou URLs clandestinas de canais pagos.
+A V5 mantém as fontes da V4 e acrescenta duas novas:
 
-## Recursos mantidos
+1. IPTV-org Brasil — `https://iptv-org.github.io/iptv/countries/br.m3u`
+2. IPTV-org Português — `https://iptv-org.github.io/iptv/languages/por.m3u`
+3. IPTV-org Portugal — `https://iptv-org.github.io/iptv/countries/pt.m3u`
+4. IPTV-org Movies — `https://iptv-org.github.io/iptv/categories/movies.m3u`
+5. Brasil Full — `https://github.com/iptv-com/iptv/raw/refs/heads/main/lists/brazil.m3u`
+6. M3UPT Portugal/Lusofonia
+7. FTA IPTV Brasil
+8. Free-TV Brasil/Portugal
 
-- Player LibVLC com aceleração de hardware.
-- M3U/M3U8 local ou URL.
+O Brasil Full passa por filtro conservador no SanchesTV para remover nomes de canais evidentemente premium quando a origem não representa um serviço oficial autenticado.
+
+## Recursos preservados
+
+- LibVLC com aceleração por hardware.
+- M3U/M3U8 por arquivo e URL.
 - Xtream do próprio usuário.
 - XMLTV/EPG.
+- Failover.
 - Favoritos, Recentes e Minha TV.
-- Filtros Brasil e Portugal/Lusofonia.
-- Failover e health-check.
-- PiP e Multiview.
+- Health-check.
+- PiP.
+- Multiview.
 - Gravação.
-- Seek/timeshift quando suportado.
+- Seek/timeshift quando a fonte permitir.
 - Controle remoto pelo celular.
-- Diagnóstico.
-- SQLite.
-- Instalador Windows x64 self-contained.
+- Diagnóstico técnico.
+- Hub Premium oficial.
+- SQLite local.
+
+## Build
+
+O pipeline Windows executa restore, build, testes, publish x64 self-contained, self-test, criação do instalador, instalação limpa, self-test pós-instalação, desinstalação, SHA-256 e publicação da release.
