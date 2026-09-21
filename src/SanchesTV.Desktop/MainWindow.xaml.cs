@@ -481,6 +481,7 @@ public partial class MainWindow : Window
 
             var engineLabel = _activeBackend == PlaybackBackend.Mpv ? "libmpv" : "LibVLC";
             StatusText.Text = $"Reproduzindo • {engineLabel} • {active.Url.Host}";
+            AppTelemetry.PlaybackStarted(engineLabel, active.Provider, active.Url.Host);
             TitleStatusText.Text = mpvFailure is null
                 ? $"{channel.Name} • {engineLabel}"
                 : $"{channel.Name} • VLC fallback";
@@ -489,6 +490,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppTelemetry.PlaybackFailed(_activeBackend.ToString(), ex.Message);
             StatusText.Text = "Nenhuma fonte iniciou";
             TitleStatusText.Text = "Fonte indisponível";
             MessageBox.Show(this, ex.Message, "Falha de reprodução", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -741,6 +743,7 @@ public partial class MainWindow : Window
             StatusText.Text = mpvFailure is null
                 ? $"P2P • {engine}"
                 : "P2P • LibVLC fallback";
+            AppTelemetry.PlaybackStarted(engine, "P2P", "127.0.0.1");
             TitleStatusText.Text = $"{displayName} • P2P";
         }
         catch (Exception ex)
