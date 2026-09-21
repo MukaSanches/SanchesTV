@@ -98,6 +98,22 @@ public sealed class AppDatabase
         CREATE INDEX IF NOT EXISTS ix_epg_channel_time
             ON epg_programs(channel_epg_id, start_utc, end_utc);
 
+        CREATE TABLE IF NOT EXISTS scheduled_recordings (
+            id TEXT PRIMARY KEY,
+            channel_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            start_utc TEXT NOT NULL,
+            end_utc TEXT NOT NULL,
+            series_key TEXT,
+            status INTEGER NOT NULL DEFAULT 0,
+            output_path TEXT,
+            last_error TEXT,
+            FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_scheduled_recordings_time
+            ON scheduled_recordings(status, start_utc, end_utc);
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT
@@ -421,6 +437,177 @@ public sealed class AppDatabase
         return (current, next);
     }
 
+    public async Task<IReadOnlyList<EpgProgram>> GetProgramsAsync(
+        string? epgId,
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(epgId))
+            return Array.Empty<EpgProgram>();
+
+        await using var connection = Open();
+        var result = new List<EpgProgram>();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        SELECT channel_epg_id, start_utc, end_utc, title, description, category
+        FROM epg_programs
+        WHERE channel_epg_id=$id AND end_utc > $from AND start_utc < $to
+        ORDER BY start_utc;
+        """;
+        command.Parameters.AddWithValue("$id", epgId);
+        command.Parameters.AddWithValue("$from", from.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$to", to.UtcDateTime.ToString("O"));
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            result.Add(ReadProgram(reader));
+        return result;
+    }
+
+    public async Task<IReadOnlyList<EpgProgram>> SearchProgramsAsync(
+        string query,
+        DateTimeOffset from,
+        DateTimeOffset to,
+        int limit = 250,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return Array.Empty<EpgProgram>();
+
+        await using var connection = Open();
+        var result = new List<EpgProgram>();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        SELECT channel_epg_id, start_utc, end_utc, title, description, category
+        FROM epg_programs
+        WHERE end_utc > $from AND start_utc < $to
+          AND (title LIKE $query OR description LIKE $query OR category LIKE $query)
+        ORDER BY start_utc
+        LIMIT $limit;
+        """;
+        command.Parameters.AddWithValue("$from", from.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$to", to.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$query", "%" + query.Trim() + "%");
+        command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 2000));
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            result.Add(ReadProgram(reader));
+        return result;
+    }
+
+    public async Task AddScheduledRecordingAsync(
+        ScheduledRecording recording,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        INSERT INTO scheduled_recordings
+            (id, channel_id, title, start_utc, end_utc, series_key, status, output_path, last_error)
+        VALUES
+            ($id, $channel, $title, $start, $end, $series, $status, $output, $error)
+        ON CONFLICT(id) DO UPDATE SET
+            title=excluded.title,
+            start_utc=excluded.start_utc,
+            end_utc=excluded.end_utc,
+            series_key=excluded.series_key,
+            status=excluded.status,
+            output_path=excluded.output_path,
+            last_error=excluded.last_error;
+        """;
+        command.Parameters.AddWithValue("$id", recording.Id.ToString());
+        command.Parameters.AddWithValue("$channel", recording.ChannelId.ToString());
+        command.Parameters.AddWithValue("$title", recording.Title);
+        command.Parameters.AddWithValue("$start", recording.Start.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$end", recording.End.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$series", (object?)recording.SeriesKey ?? DBNull.Value);
+        command.Parameters.AddWithValue("$status", (int)recording.Status);
+        command.Parameters.AddWithValue("$output", (object?)recording.OutputPath ?? DBNull.Value);
+        command.Parameters.AddWithValue("$error", (object?)recording.LastError ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ScheduledRecording>> GetScheduledRecordingsAsync(
+        bool includeFinished = false,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var result = new List<ScheduledRecording>();
+        var command = connection.CreateCommand();
+        command.CommandText = includeFinished
+            ? """
+              SELECT id, channel_id, title, start_utc, end_utc, series_key, status, output_path, last_error
+              FROM scheduled_recordings
+              ORDER BY start_utc;
+              """
+            : """
+              SELECT id, channel_id, title, start_utc, end_utc, series_key, status, output_path, last_error
+              FROM scheduled_recordings
+              WHERE status IN (0,1)
+              ORDER BY start_utc;
+              """;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            result.Add(ReadScheduledRecording(reader));
+        return result;
+    }
+
+    public async Task<IReadOnlyList<ScheduledRecording>> GetDueScheduledRecordingsAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var result = new List<ScheduledRecording>();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        SELECT id, channel_id, title, start_utc, end_utc, series_key, status, output_path, last_error
+        FROM scheduled_recordings
+        WHERE status=0 AND start_utc <= $now AND end_utc > $now
+        ORDER BY start_utc;
+        """;
+        command.Parameters.AddWithValue("$now", now.UtcDateTime.ToString("O"));
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            result.Add(ReadScheduledRecording(reader));
+        return result;
+    }
+
+    public async Task UpdateScheduledRecordingAsync(
+        Guid id,
+        ScheduledRecordingStatus status,
+        string? outputPath = null,
+        string? lastError = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        UPDATE scheduled_recordings
+        SET status=$status,
+            output_path=COALESCE($output, output_path),
+            last_error=$error
+        WHERE id=$id;
+        """;
+        command.Parameters.AddWithValue("$status", (int)status);
+        command.Parameters.AddWithValue("$output", (object?)outputPath ?? DBNull.Value);
+        command.Parameters.AddWithValue("$error", (object?)lastError ?? DBNull.Value);
+        command.Parameters.AddWithValue("$id", id.ToString());
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task DeleteScheduledRecordingAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM scheduled_recordings WHERE id=$id;";
+        command.Parameters.AddWithValue("$id", id.ToString());
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task<string?> GetSettingAsync(string key, CancellationToken cancellationToken = default)
     {
         await using var connection = Open();
@@ -442,6 +629,20 @@ public sealed class AppDatabase
         command.Parameters.AddWithValue("$key", key);
         command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static ScheduledRecording ReadScheduledRecording(SqliteDataReader reader)
+    {
+        return new ScheduledRecording(
+            Guid.Parse(reader.GetString(0)),
+            Guid.Parse(reader.GetString(1)),
+            reader.GetString(2),
+            DateTimeOffset.Parse(reader.GetString(3)),
+            DateTimeOffset.Parse(reader.GetString(4)),
+            reader.IsDBNull(5) ? null : reader.GetString(5),
+            (ScheduledRecordingStatus)reader.GetInt32(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8));
     }
 
     private static EpgProgram ReadProgram(SqliteDataReader reader)
