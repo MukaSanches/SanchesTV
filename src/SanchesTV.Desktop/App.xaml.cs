@@ -10,6 +10,8 @@ using SanchesTV.Desktop.P2P;
 using MonoTorrent.Client;
 using SanchesTV.Core.P2P;
 using SanchesTV.Desktop.Diagnostics;
+using SanchesTV.Desktop.Tools;
+using SanchesTV.Core.Search;
 
 namespace SanchesTV.Desktop;
 
@@ -102,6 +104,26 @@ internal static class SelfTest
                 p2pDefaults.StallRecoverySeconds < 6 ||
                 p2pDefaults.MetadataTimeoutSeconds < 15)
                 return 25;
+
+            if (!FuzzyMatcher.IsMatch("glbo", "Globo"))
+                return 26;
+
+            var tools = new MediaToolsService();
+            if (!File.Exists(tools.MediaMtxPath) ||
+                tools.TsAnalyzePath is null ||
+                tools.CcExtractorPath is null ||
+                !File.Exists(tools.WhisperPath) ||
+                !File.Exists(tools.WhisperModelPath))
+                return 31;
+
+            if (new FileInfo(tools.WhisperModelPath).Length < 50_000_000)
+                return 32;
+
+            var runtimeSummary = await tools.GetVersionSummaryAsync();
+            if (!runtimeSummary.Contains("MediaMTX", StringComparison.OrdinalIgnoreCase) ||
+                !runtimeSummary.Contains("TSDuck", StringComparison.OrdinalIgnoreCase) ||
+                !runtimeSummary.Contains("CCExtractor", StringComparison.OrdinalIgnoreCase))
+                return 33;
 
             try { File.Delete(temp); } catch { }
             return 0;
