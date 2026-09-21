@@ -1,5 +1,5 @@
 #define MyAppName "SanchesTV"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "3.0.0"
 #define MyAppPublisher "SanchesTV"
 #define MyAppExeName "SanchesTV.exe"
 
@@ -15,7 +15,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\artifacts\installer
-OutputBaseFilename=SanchesTV-Setup-2.0.0-x64
+OutputBaseFilename=SanchesTV-Setup-3.0.0-x64
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
