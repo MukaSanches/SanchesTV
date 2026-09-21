@@ -188,10 +188,13 @@ public sealed class MediaToolsService
             lines.Add("CCExtractor: " + FirstLine(await RunAsync(cc, ["--version"], TimeSpan.FromSeconds(8), cancellationToken)));
         if (File.Exists(WhisperPath))
             lines.Add("whisper.cpp: " + FirstLine(await RunAsync(WhisperPath, ["--help"], TimeSpan.FromSeconds(8), cancellationToken)));
-        if (RifePath is { } rife)
-            lines.Add("RIFE: " + FirstLine(await RunAsync(rife, ["-h"], TimeSpan.FromSeconds(8), cancellationToken)));
-        if (RealEsrganPath is { } esr)
-            lines.Add("Real-ESRGAN: " + FirstLine(await RunAsync(esr, ["-h"], TimeSpan.FromSeconds(8), cancellationToken)));
+        // RIFE e Real-ESRGAN retornam -1 deliberadamente quando chamados com -h.
+        // Para integridade, a existência é verificada no self-test/pipeline; a execução real
+        // ocorre apenas com arquivos de entrada válidos e GPU Vulkan disponível.
+        if (RifePath is not null)
+            lines.Add("RIFE: runtime Vulkan empacotado");
+        if (RealEsrganPath is not null)
+            lines.Add("Real-ESRGAN: runtime Vulkan empacotado");
 
         return string.Join(Environment.NewLine, lines);
     }
