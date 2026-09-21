@@ -118,7 +118,9 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
         EnsureInitialized();
 
         MpvNative.TryCommand(_context, "stop");
+        ApplyProfile(Profile);
         ConfigureHttpHeaders(source);
+        ConfigureSourceBuffering(source);
 
         TaskCompletionSource<bool> signal;
         lock (_gate)
@@ -147,10 +149,26 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
         return true;
     }
 
+    private void ConfigureSourceBuffering(ChannelSource source)
+    {
+        var isP2p = string.Equals(source.Provider, "P2P", StringComparison.OrdinalIgnoreCase);
+        if (!isP2p)
+            return;
+
+        // O endpoint P2P é local, mas os bytes chegam do swarm. Dar mais folga
+        // ao demuxer evita que pequenas oscilações de peers parem o decoder.
+        MpvNative.TrySetProperty(_context, "cache", "yes");
+        MpvNative.TrySetProperty(_context, "cache-pause", "yes");
+        MpvNative.TrySetProperty(_context, "demuxer-readahead-secs", "12");
+        MpvNative.TrySetProperty(_context, "demuxer-max-bytes", "268435456");
+        MpvNative.TrySetProperty(_context, "demuxer-max-back-bytes", "67108864");
+        MpvNative.TrySetProperty(_context, "network-timeout", "30");
+    }
+
     private void ConfigureHttpHeaders(ChannelSource source)
     {
         MpvNative.TrySetProperty(_context, "user-agent",
-            string.IsNullOrWhiteSpace(source.UserAgent) ? "SanchesTV/6.0" : source.UserAgent);
+            string.IsNullOrWhiteSpace(source.UserAgent) ? "SanchesTV/6.1.1" : source.UserAgent);
 
         MpvNative.TrySetProperty(_context, "referrer",
             string.IsNullOrWhiteSpace(source.Referrer) ? string.Empty : source.Referrer);
