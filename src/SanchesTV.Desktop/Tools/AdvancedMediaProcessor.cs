@@ -164,6 +164,177 @@ public sealed class AdvancedMediaProcessor
         return output;
     }
 
+    public async Task<string> UpscaleVideo2xAsync(
+        string input,
+        bool anime = false,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInput(input);
+        var exe = _tools.RealEsrganPath
+            ?? throw new FileNotFoundException("Real-ESRGAN Vulkan não encontrado no runtime.");
+
+        var fps = await GetVideoFpsAsync(input, cancellationToken);
+        var temp = Path.Combine(Path.GetTempPath(), "sanchestv-esr-" + Guid.NewGuid().ToString("N"));
+        var sourceFrames = Path.Combine(temp, "input");
+        var outputFrames = Path.Combine(temp, "output");
+        Directory.CreateDirectory(sourceFrames);
+        Directory.CreateDirectory(outputFrames);
+
+        try
+        {
+            await MediaToolsService.RunAsync(
+                _tools.FfmpegPath,
+                ["-hide_banner", "-loglevel", "error", "-i", input,
+                 Path.Combine(sourceFrames, "%08d.png")],
+                TimeSpan.FromHours(4),
+                cancellationToken);
+
+            var modelDir = FindModelDirectory(exe, "models")
+                ?? throw new DirectoryNotFoundException("Modelos Real-ESRGAN não encontrados.");
+
+            await MediaToolsService.RunAsync(
+                exe,
+                ["-i", sourceFrames, "-o", outputFrames,
+                 "-m", modelDir,
+                 "-n", anime ? "realesr-animevideov3" : "realesrgan-x4plus",
+                 "-s", "2", "-f", "png"],
+                TimeSpan.FromHours(12),
+                cancellationToken);
+
+            var caps = await GetCapabilitiesAsync(cancellationToken);
+            var encoder = caps.H264Encoders.FirstOrDefault()
+                ?? throw new InvalidOperationException("Nenhum encoder H.264 disponível.");
+            var output = OutputPath(input, "-ai-upscale-2x", ".mkv");
+
+            var args = new List<string>
+            {
+                "-hide_banner", "-y",
+                "-framerate", fps.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture),
+                "-i", Path.Combine(outputFrames, "%08d.png"),
+                "-i", input,
+                "-map", "0:v:0", "-map", "1:a?", "-map", "1:s?",
+                "-c:v", encoder
+            };
+            AddEncoderQuality(args, encoder);
+            args.AddRange(["-c:a", "copy", "-c:s", "copy", "-shortest", output]);
+
+            await MediaToolsService.RunAsync(
+                _tools.FfmpegPath, args, TimeSpan.FromHours(8), cancellationToken);
+            return output;
+        }
+        finally
+        {
+            try { Directory.Delete(temp, recursive: true); } catch { }
+        }
+    }
+
+    public async Task<string> InterpolateVideo2xAsync(
+        string input,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInput(input);
+        var exe = _tools.RifePath
+            ?? throw new FileNotFoundException("RIFE Vulkan não encontrado no runtime.");
+
+        var fps = await GetVideoFpsAsync(input, cancellationToken);
+        var temp = Path.Combine(Path.GetTempPath(), "sanchestv-rife-" + Guid.NewGuid().ToString("N"));
+        var sourceFrames = Path.Combine(temp, "input");
+        var outputFrames = Path.Combine(temp, "output");
+        Directory.CreateDirectory(sourceFrames);
+        Directory.CreateDirectory(outputFrames);
+
+        try
+        {
+            await MediaToolsService.RunAsync(
+                _tools.FfmpegPath,
+                ["-hide_banner", "-loglevel", "error", "-i", input,
+                 Path.Combine(sourceFrames, "%08d.png")],
+                TimeSpan.FromHours(4),
+                cancellationToken);
+
+            var model = FindModelDirectory(exe, "rife-v4.6")
+                ?? FindModelDirectory(exe, "rife-v4")
+                ?? FindModelDirectory(exe, "rife-v3.1")
+                ?? FindModelDirectory(exe, "rife-v2.3")
+                ?? throw new DirectoryNotFoundException("Modelos RIFE não encontrados.");
+
+            await MediaToolsService.RunAsync(
+                exe,
+                ["-i", sourceFrames, "-o", outputFrames, "-m", model, "-f", "%08d.png"],
+                TimeSpan.FromHours(12),
+                cancellationToken);
+
+            var caps = await GetCapabilitiesAsync(cancellationToken);
+            var encoder = caps.H264Encoders.FirstOrDefault()
+                ?? throw new InvalidOperationException("Nenhum encoder H.264 disponível.");
+            var output = OutputPath(input, "-rife-2x", ".mkv");
+
+            var args = new List<string>
+            {
+                "-hide_banner", "-y",
+                "-framerate", (fps * 2).ToString("0.######", System.Globalization.CultureInfo.InvariantCulture),
+                "-i", Path.Combine(outputFrames, "%08d.png"),
+                "-i", input,
+                "-map", "0:v:0", "-map", "1:a?", "-map", "1:s?",
+                "-c:v", encoder
+            };
+            AddEncoderQuality(args, encoder);
+            args.AddRange(["-c:a", "copy", "-c:s", "copy", "-shortest", output]);
+
+            await MediaToolsService.RunAsync(
+                _tools.FfmpegPath, args, TimeSpan.FromHours(8), cancellationToken);
+            return output;
+        }
+        finally
+        {
+            try { Directory.Delete(temp, recursive: true); } catch { }
+        }
+    }
+
+    private async Task<double> GetVideoFpsAsync(string input, CancellationToken cancellationToken)
+    {
+        var text = await MediaToolsService.RunAsync(
+            _tools.FfprobePath,
+            ["-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=avg_frame_rate",
+             "-of", "default=noprint_wrappers=1:nokey=1", input],
+            TimeSpan.FromSeconds(30),
+            cancellationToken);
+
+        var value = text.Split(['\r','\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim() ?? "30/1";
+        var parts = value.Split('/');
+        if (parts.Length == 2 &&
+            double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) &&
+            double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) &&
+            d > 0)
+            return Math.Clamp(n / d, 1, 240);
+
+        return double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fps)
+            ? Math.Clamp(fps, 1, 240)
+            : 30;
+    }
+
+    private static string? FindModelDirectory(string executable, string name)
+    {
+        var root = Directory.GetParent(Path.GetDirectoryName(executable) ?? string.Empty)?.FullName
+            ?? Path.GetDirectoryName(executable);
+        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+            return null;
+
+        return Directory.EnumerateDirectories(root, name, SearchOption.AllDirectories).FirstOrDefault()
+            ?? (name == "models"
+                ? Directory.EnumerateDirectories(root, "models", SearchOption.AllDirectories).FirstOrDefault()
+                : null);
+    }
+
+    private static void AddEncoderQuality(List<string> args, string encoder)
+    {
+        if (string.Equals(encoder, "libx264", StringComparison.OrdinalIgnoreCase))
+            args.AddRange(["-preset", "medium", "-crf", "18"]);
+        else
+            args.AddRange(["-b:v", "10M"]);
+    }
+
     private static void EnsureInput(string path)
     {
         if (!File.Exists(path))
