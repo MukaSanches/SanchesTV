@@ -15,6 +15,7 @@ using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Desktop.Playback;
+using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.Remote;
 using SanchesTV.Desktop.Windows;
 
@@ -29,7 +30,11 @@ public partial class MainWindow : Window
 
     private readonly AppDatabase _db = new();
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
-    private readonly VlcPlaybackEngine _player = new();
+    private readonly VlcPlaybackEngine _vlc = new();
+    private readonly MpvPlaybackEngine _mpv = new();
+    private readonly FfmpegRecorder _recorder = new();
+    private readonly WindowsAudioService _audio = new();
+    private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RemoteControlServer? _remote;
     private IReadOnlyList<Channel> _allChannels = Array.Empty<Channel>();
     private List<ChannelListItem> _visibleItems = new();
@@ -39,17 +44,53 @@ public partial class MainWindow : Window
     private bool _isRecording;
     private bool _catalogSyncRunning;
     private bool _showCompactChannels = true;
+    private bool _muted;
+    private PlaybackBackend _activeBackend = PlaybackBackend.Vlc;
+    private ChannelSource? _activeSource;
     private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
 
     public MainWindow()
     {
         InitializeComponent();
-        VideoView.Loaded += (_, _) => VideoView.MediaPlayer = _player.MediaPlayer;
-        _player.PlaybackError += (_, message) => Dispatcher.Invoke(() =>
+
+        VideoView.Loaded += (_, _) => VideoView.MediaPlayer = _vlc.MediaPlayer;
+
+        MpvSurface.HostReady += (_, hwnd) =>
         {
-            StatusText.Text = message;
-            TitleStatusText.Text = "Falha de reprodução";
+            try
+            {
+                _mpv.Initialize(hwnd);
+                _mpvReady.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                _mpvReady.TrySetResult(false);
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = $"libmpv indisponível; VLC ativo ({ex.Message})";
+                    SetVideoBackend(PlaybackBackend.Vlc);
+                });
+            }
+        };
+
+        _vlc.PlaybackError += (_, message) => Dispatcher.Invoke(() =>
+        {
+            if (_activeBackend == PlaybackBackend.Vlc)
+            {
+                StatusText.Text = message;
+                TitleStatusText.Text = "Falha de reprodução";
+            }
         });
+
+        _mpv.PlaybackError += (_, message) => Dispatcher.Invoke(() =>
+        {
+            if (_activeBackend == PlaybackBackend.Mpv)
+            {
+                StatusText.Text = message;
+                TitleStatusText.Text = "Falha no libmpv";
+            }
+        });
+
         Loaded += MainWindow_Loaded;
     }
 
@@ -143,7 +184,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 5.2...");
+            SetBusy(true, "Inicializando SanchesTV 6.0...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -229,7 +270,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
-                    "Catálogo SanchesTV 5.2",
+                    "Catálogo SanchesTV 6.0",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -370,7 +411,35 @@ public partial class MainWindow : Window
                 .ThenBy(s => s.Priority)
                 .ToArray();
 
-            var active = await _player.OpenWithFallbackAsync(ordered);
+            ChannelSource active;
+            Exception? mpvFailure = null;
+
+            if (await EnsureMpvReadyAsync())
+            {
+                try
+                {
+                    await _vlc.StopAsync();
+                    SetVideoBackend(PlaybackBackend.Mpv);
+                    active = await _mpv.OpenWithFallbackAsync(ordered);
+                    _activeBackend = PlaybackBackend.Mpv;
+                }
+                catch (Exception ex)
+                {
+                    mpvFailure = ex;
+                    await _mpv.StopAsync();
+                    SetVideoBackend(PlaybackBackend.Vlc);
+                    active = await _vlc.OpenWithFallbackAsync(ordered);
+                    _activeBackend = PlaybackBackend.Vlc;
+                }
+            }
+            else
+            {
+                SetVideoBackend(PlaybackBackend.Vlc);
+                active = await _vlc.OpenWithFallbackAsync(ordered);
+                _activeBackend = PlaybackBackend.Vlc;
+            }
+
+            _activeSource = active;
             _currentChannel = channel;
             await _db.RecordPlayedAsync(channel.Id);
 
@@ -385,8 +454,11 @@ public partial class MainWindow : Window
             SourceBadgeText.Text = active.Provider.Length > 34 ? active.Provider[..34] + "…" : active.Provider;
             SetPlayerLogo(channel.Logo);
 
-            StatusText.Text = $"Reproduzindo • {active.Url.Host}";
-            TitleStatusText.Text = channel.Name;
+            var engineLabel = _activeBackend == PlaybackBackend.Mpv ? "libmpv" : "LibVLC";
+            StatusText.Text = $"Reproduzindo • {engineLabel} • {active.Url.Host}";
+            TitleStatusText.Text = mpvFailure is null
+                ? $"{channel.Name} • {engineLabel}"
+                : $"{channel.Name} • VLC fallback";
             await UpdateEpgAsync(channel);
             await RefreshHomeListsAsync();
         }
@@ -400,6 +472,37 @@ public partial class MainWindow : Window
         {
             SetBusy(false);
         }
+    }
+
+    private async Task<bool> EnsureMpvReadyAsync()
+    {
+        if (_mpv.IsAvailable)
+            return true;
+
+        if (MpvSurface.NativeHandle != IntPtr.Zero)
+        {
+            try
+            {
+                _mpv.Initialize(MpvSurface.NativeHandle);
+                _mpvReady.TrySetResult(true);
+                return true;
+            }
+            catch
+            {
+                _mpvReady.TrySetResult(false);
+                return false;
+            }
+        }
+
+        var completed = await Task.WhenAny(_mpvReady.Task, Task.Delay(1800));
+        return completed == _mpvReady.Task && await _mpvReady.Task;
+    }
+
+    private void SetVideoBackend(PlaybackBackend backend)
+    {
+        _activeBackend = backend;
+        MpvSurface.Visibility = backend == PlaybackBackend.Mpv ? Visibility.Visible : Visibility.Collapsed;
+        VideoView.Visibility = backend == PlaybackBackend.Vlc ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SetPlayerLogo(string? logo)
@@ -770,24 +873,39 @@ public partial class MainWindow : Window
 
     private async void PlayPause_Click(object sender, RoutedEventArgs e)
     {
-        if (_player.MediaPlayer.IsPlaying)
-            await _player.PauseAsync();
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+        {
+            if (_mpv.IsPlaying && !_mpv.IsPaused)
+                await _mpv.PauseAsync();
+            else
+                await _mpv.PlayAsync();
+            return;
+        }
+
+        if (_vlc.MediaPlayer.IsPlaying)
+            await _vlc.PauseAsync();
         else
-            await _player.PlayAsync();
+            await _vlc.PlayAsync();
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)
     {
-        await _player.StopAsync();
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+            await _mpv.StopAsync();
+        else
+            await _vlc.StopAsync();
+
         StatusText.Text = "Parado";
         TitleStatusText.Text = "Reprodução parada";
     }
 
     private async void Mute_Click(object sender, RoutedEventArgs e)
     {
-        var mute = !_player.MediaPlayer.Mute;
-        await _player.SetMuteAsync(mute);
-        MuteButton.Content = mute ? "🔇" : "🔊";
+        _muted = !_muted;
+        if (_mpv.IsAvailable)
+            await _mpv.SetMuteAsync(_muted);
+        await _vlc.SetMuteAsync(_muted);
+        MuteButton.Content = _muted ? "🔇" : "🔊";
     }
 
     private async void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -795,35 +913,61 @@ public partial class MainWindow : Window
         if (!IsLoaded)
             return;
 
-        await _player.SetVolumeAsync(e.NewValue);
+        if (_mpv.IsAvailable)
+            await _mpv.SetVolumeAsync(e.NewValue);
+        await _vlc.SetVolumeAsync(e.NewValue);
     }
 
-    private void Rewind_Click(object sender, RoutedEventArgs e)
+    private async void Rewind_Click(object sender, RoutedEventArgs e)
     {
-        if (!_player.MediaPlayer.IsSeekable)
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+        {
+            if (!_mpv.IsSeekable)
+            {
+                StatusText.Text = "Esta fonte não oferece timeshift/seek.";
+                return;
+            }
+
+            await _mpv.SeekRelativeAsync(-30);
+            return;
+        }
+
+        if (!_vlc.MediaPlayer.IsSeekable)
         {
             StatusText.Text = "Esta fonte não oferece timeshift/seek.";
             return;
         }
 
-        _player.MediaPlayer.Time = Math.Max(0, _player.MediaPlayer.Time - 30_000);
+        _vlc.MediaPlayer.Time = Math.Max(0, _vlc.MediaPlayer.Time - 30_000);
     }
 
-    private void Live_Click(object sender, RoutedEventArgs e)
+    private async void Live_Click(object sender, RoutedEventArgs e)
     {
-        if (!_player.MediaPlayer.IsSeekable)
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+        {
+            if (!_mpv.IsSeekable)
+            {
+                StatusText.Text = "Esta fonte não oferece retorno ao vivo por seek.";
+                return;
+            }
+
+            await _mpv.GoLiveAsync();
+            return;
+        }
+
+        if (!_vlc.MediaPlayer.IsSeekable)
         {
             StatusText.Text = "Esta fonte não oferece retorno ao vivo por seek.";
             return;
         }
 
-        _player.MediaPlayer.Position = 1f;
-        _player.MediaPlayer.SetPause(false);
+        _vlc.MediaPlayer.Position = 1f;
+        _vlc.MediaPlayer.SetPause(false);
     }
 
     private void Record_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentChannel is null)
+        if (_activeSource is null)
         {
             StatusText.Text = "Selecione um canal antes de gravar.";
             return;
@@ -835,34 +979,34 @@ public partial class MainWindow : Window
                 Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
                 "SanchesTV");
 
-            if (_player.StartRecording(directory))
+            if (_recorder.Start(_activeSource, directory))
             {
                 _isRecording = true;
                 RecordButton.Content = "■ STOP REC";
-                StatusText.Text = $"Gravando em {directory}";
+                StatusText.Text = $"FFmpeg gravando/remuxando em {directory}";
             }
             else
             {
-                StatusText.Text = "Não foi possível iniciar a gravação.";
+                StatusText.Text = "FFmpeg não pôde iniciar a gravação.";
             }
         }
         else
         {
-            _player.StopRecording();
+            _recorder.Stop();
             _isRecording = false;
             RecordButton.Content = "● REC";
-            StatusText.Text = _player.RecordingPath is null
+            StatusText.Text = _recorder.OutputPath is null
                 ? "Gravação encerrada"
-                : $"Gravação salva: {_player.RecordingPath}";
+                : $"Gravação salva: {_recorder.OutputPath}";
         }
     }
 
     private void Pip_Click(object sender, RoutedEventArgs e)
     {
-        if (_player.CurrentChannelSource is null)
+        if (_activeSource is null)
             return;
 
-        new PipWindow(_player.CurrentChannelSource) { Owner = this }.Show();
+        new PipWindow(_activeSource) { Owner = this }.Show();
     }
 
     private void Multiview_Click(object sender, RoutedEventArgs e)
@@ -901,12 +1045,14 @@ public partial class MainWindow : Window
         new RemoteControlWindow(_remote.GetRemoteUrl()) { Owner = this }.ShowDialog();
     }
 
+    private void AudioVideo_Click(object sender, RoutedEventArgs e)
+    {
+        new AudioVideoSettingsWindow(_mpv, _audio) { Owner = this }.ShowDialog();
+    }
+
     private void Diagnostics_Click(object sender, RoutedEventArgs e)
     {
-        var mp = _player.MediaPlayer;
-        var active = _player.CurrentChannelSource;
-        var source = active?.Url.ToString() ?? "(nenhuma)";
-
+        var source = _activeSource?.Url.ToString() ?? "(nenhuma)";
         if (source.Contains('@'))
         {
             try
@@ -920,24 +1066,36 @@ public partial class MainWindow : Window
             }
         }
 
+        string engineDetails;
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+        {
+            engineDetails = _mpv.GetDiagnostics();
+        }
+        else
+        {
+            var mp = _vlc.MediaPlayer;
+            engineDetails =
+                $"Engine: LibVLC fallback\n" +
+                $"Estado: {mp.State}\n" +
+                $"FPS: {mp.Fps:N2}\n" +
+                $"Volume: {mp.Volume}%\n" +
+                $"Seek: {(mp.IsSeekable ? "sim" : "não")}";
+        }
+
+        var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 5.2.0\n" +
-            $"Interface: Fluent Cinema / Mica\n" +
-            $"Engine: {_player.Name}\n" +
-            $"Estado: {mp.State}\n" +
-            $"Provider: {active?.Provider ?? "(nenhum)"}\n" +
+            $"SanchesTV: 6.0.0\n" +
+            $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
-            $"FPS: {mp.Fps:N2}\n" +
-            $"Volume: {mp.Volume}%\n" +
-            $"Tempo: {TimeSpan.FromMilliseconds(Math.Max(0, mp.Time)):hh\\:mm\\:ss}\n" +
-            $"Duração: {(mp.Length > 0 ? TimeSpan.FromMilliseconds(mp.Length).ToString(@"hh\:mm\:ss") : "ao vivo/indefinida")}\n" +
-            $"Seek/timeshift: {(mp.IsSeekable ? "sim" : "não")}\n" +
-            $"Pausa: {(mp.CanPause ? "sim" : "não")}\n" +
+            $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
+            $"{engineDetails}\n\n" +
+            $"{_audio.GetSummary()}\n" +
+            $"FFmpeg recorder: {ffmpeg}\n" +
             $"Catálogo local: {_allChannels.Count:N0} canais\n" +
             $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";
 
-        MessageBox.Show(this, text, "Diagnóstico SanchesTV", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -1070,7 +1228,9 @@ public partial class MainWindow : Window
         if (_remote is not null)
             await _remote.DisposeAsync();
 
-        await _player.DisposeAsync();
+        _recorder.Dispose();
+        await _mpv.DisposeAsync();
+        await _vlc.DisposeAsync();
         _http.Dispose();
     }
 
@@ -1084,6 +1244,12 @@ public partial class MainWindow : Window
             return string.Concat(words[0][0], words[1][0]).ToUpperInvariant();
 
         return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    private enum PlaybackBackend
+    {
+        Mpv,
+        Vlc
     }
 
     private sealed class ChannelListItem
