@@ -76,7 +76,11 @@ jobs:
         shell: pwsh
         run: |
           $p = Start-Process -FilePath ".\artifacts\publish\SanchesTV.exe" -ArgumentList "--self-test" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "Self-test failed with exit code $($p.ExitCode)" }
+          if ($p.ExitCode -ne 0) {
+            $diag = ".\artifacts\publish\selftest-error.txt"
+            if (Test-Path $diag) { Get-Content $diag | Write-Host }
+            throw "Self-test failed with exit code $($p.ExitCode)"
+          }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -103,7 +107,11 @@ jobs:
           if (-not (Test-Path $exe)) { throw "Installed executable not found." }
 
           $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
-          if ($selfTest.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($selfTest.ExitCode)" }
+          if ($selfTest.ExitCode -ne 0) {
+            $diag = Join-Path $installDir "selftest-error.txt"
+            if (Test-Path $diag) { Get-Content $diag | Write-Host }
+            throw "Installed self-test failed with exit code $($selfTest.ExitCode)"
+          }
 
           $uninstaller = Join-Path $installDir "unins000.exe"
           if (-not (Test-Path $uninstaller)) { throw "Uninstaller not found." }
@@ -144,7 +152,11 @@ jobs:
           if (-not (Test-Path $exe)) { throw "Velopack installed executable not found." }
 
           $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
-          if ($selfTest.ExitCode -ne 0) { throw "Velopack installed self-test failed with exit code $($selfTest.ExitCode)" }
+          if ($selfTest.ExitCode -ne 0) {
+            $diag = Join-Path (Split-Path $exe -Parent) "selftest-error.txt"
+            if (Test-Path $diag) { Get-Content $diag | Write-Host }
+            throw "Velopack installed self-test failed with exit code $($selfTest.ExitCode)"
+          }
 
           $update = Join-Path $installDir "Update.exe"
           if (-not (Test-Path $update)) { throw "Velopack Update.exe missing." }
