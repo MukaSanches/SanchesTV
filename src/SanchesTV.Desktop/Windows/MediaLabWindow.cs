@@ -496,6 +496,7 @@ public sealed class MediaLabWindow : Window
         var actions = new WrapPanel();
         actions.Children.Add(Button("Analisar fonte atual (FFprobe)", ProbeCurrent_Click));
         actions.Children.Add(Button("Analisar arquivo (FFprobe)", ProbeFile_Click));
+        actions.Children.Add(Button("Metadata TagLib", Metadata_Click));
         actions.Children.Add(Button("Analisar MPEG-TS (TSDuck)", AnalyzeTs_Click));
         panel.Children.Add(actions);
 
@@ -642,6 +643,24 @@ public sealed class MediaLabWindow : Window
         if (path is null)
             return;
         await RunToOutputAsync("Analisando arquivo...", ct => _tools.ProbeLocalFileAsync(path, ct));
+    }
+
+    private void Metadata_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null)
+            return;
+
+        try
+        {
+            _output.Text = _metadata.Read(path);
+            _status.Text = "Metadata local lida com TagLib#.";
+        }
+        catch (Exception ex)
+        {
+            _output.Text = ex.ToString();
+            _status.Text = "Falha ao ler metadata.";
+        }
     }
 
     private async void AnalyzeTs_Click(object sender, RoutedEventArgs e)
