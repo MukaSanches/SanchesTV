@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using SanchesTV.Core.Models;
 using SanchesTV.Desktop.Tools;
+using SanchesTV.Desktop.AI;
+using SanchesTV.Desktop.Update;
 
 namespace SanchesTV.Desktop.Windows;
 
@@ -12,6 +14,13 @@ public sealed class MediaLabWindow : Window
     private readonly MediaToolsService _tools;
     private readonly MediaRouterService _router;
     private readonly Func<ChannelSource?> _sourceProvider;
+    private readonly DlnaCastService _dlna = new();
+    private readonly AdvancedMediaProcessor _processor;
+    private readonly OnnxModelInspector _onnx = new();
+    private readonly AppUpdateService _updates = new();
+
+    private readonly ListBox _renderers = new();
+    private IReadOnlyList<DlnaRenderer> _knownRenderers = Array.Empty<DlnaRenderer>();
 
     private readonly TextBox _output = new()
     {
@@ -33,6 +42,7 @@ public sealed class MediaLabWindow : Window
         _tools = tools;
         _router = router;
         _sourceProvider = sourceProvider;
+        _processor = new AdvancedMediaProcessor(tools);
 
         Title = "SanchesTV 7 — Media Lab";
         Width = 900;
@@ -75,8 +85,12 @@ public sealed class MediaLabWindow : Window
         root.Children.Add(tabs);
 
         tabs.Items.Add(BuildRouterTab());
+        tabs.Items.Add(BuildCastTab());
         tabs.Items.Add(BuildAnalysisTab());
+        tabs.Items.Add(BuildProcessingTab());
         tabs.Items.Add(BuildSubtitleTab());
+        tabs.Items.Add(BuildAiTab());
+        tabs.Items.Add(BuildUpdateTab());
         tabs.Items.Add(BuildRuntimeTab());
 
         _status.Text = "Inicializando Media Lab...";
@@ -130,6 +144,257 @@ public sealed class MediaLabWindow : Window
             if (s is null)
                 return "Roteador parado.";
             return $"RTSP: {s.RtspUrl}\nHLS: {s.HlsUrl}\nWebRTC: {s.WebRtcUrl}\nLAN: {(s.LanEnabled ? "sim" : "não")}";
+        }
+    }
+
+    private TabItem BuildCastTab()
+    {
+        var panel = Panel();
+        panel.Children.Add(Title("DLNA / UPnP"));
+        panel.Children.Add(Description(
+            "Descobre televisores e Media Renderers na rede local. O SanchesTV cria um HLS acessível na LAN e envia a URL ao dispositivo selecionado."));
+
+        var actions = new WrapPanel();
+        actions.Children.Add(Button("Procurar TVs", DiscoverDlna_Click));
+        actions.Children.Add(Button("Transmitir canal atual", CastDlna_Click));
+        actions.Children.Add(Button("Parar na TV", StopDlna_Click));
+        panel.Children.Add(actions);
+
+        _renderers.MinHeight = 220;
+        _renderers.Margin = new Thickness(0, 12, 0, 0);
+        _renderers.DisplayMemberPath = nameof(DlnaRenderer.Name);
+        panel.Children.Add(_renderers);
+
+        return new TabItem { Header = "DLNA", Content = Scroll(panel) };
+    }
+
+    private async void DiscoverDlna_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SetBusy("Procurando Media Renderers via SSDP...");
+            _knownRenderers = await _dlna.DiscoverAsync(TimeSpan.FromSeconds(4));
+            _renderers.ItemsSource = _knownRenderers;
+            if (_knownRenderers.Count > 0)
+                _renderers.SelectedIndex = 0;
+            _status.Text = _knownRenderers.Count == 0
+                ? "Nenhum renderer DLNA respondeu."
+                : $"{_knownRenderers.Count} dispositivo(s) encontrados.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Falha DLNA: " + ex.Message;
+        }
+    }
+
+    private async void CastDlna_Click(object sender, RoutedEventArgs e)
+    {
+        if (_renderers.SelectedItem is not DlnaRenderer renderer)
+        {
+            _status.Text = "Selecione uma TV/renderer.";
+            return;
+        }
+
+        var source = _sourceProvider();
+        if (source is null)
+        {
+            _status.Text = "Abra um canal primeiro.";
+            return;
+        }
+
+        try
+        {
+            SetBusy("Preparando HLS para a TV...");
+            var session = _router.Current is { LanEnabled: true } current
+                ? current
+                : await _router.StartAsync(source, enableLan: true);
+
+            await _dlna.CastAsync(renderer, session.HlsUrl, "SanchesTV");
+            _status.Text = "Transmitindo para " + renderer.Name;
+            RefreshBindings();
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Cast falhou: " + ex.Message;
+        }
+    }
+
+    private async void StopDlna_Click(object sender, RoutedEventArgs e)
+    {
+        if (_renderers.SelectedItem is not DlnaRenderer renderer)
+            return;
+        try
+        {
+            await _dlna.StopAsync(renderer);
+            _status.Text = "Reprodução DLNA parada.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Falha ao parar: " + ex.Message;
+        }
+    }
+
+    private TabItem BuildProcessingTab()
+    {
+        var panel = Panel();
+        panel.Children.Add(Title("Processamento avançado"));
+        panel.Children.Add(Description(
+            "Usa os filtros realmente presentes no FFmpeg empacotado: EBU R128/loudnorm, SoXR, zscale/zimg, BWDIF e VMAF quando disponíveis."));
+
+        var actions = new WrapPanel();
+        actions.Children.Add(Button("Ver capacidades", ProcessingCaps_Click));
+        actions.Children.Add(Button("Analisar loudness", Loudness_Click));
+        actions.Children.Add(Button("Normalizar EBU R128", Normalize_Click));
+        actions.Children.Add(Button("Processar vídeo Cinema", Enhance_Click));
+        actions.Children.Add(Button("Comparar VMAF", Vmaf_Click));
+        panel.Children.Add(actions);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Arquivos processados são gravados em Vídeos\\SanchesTV\\Processados. Operações pesadas não bloqueiam o player principal.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#8998AD"),
+            Margin = new Thickness(0, 14, 0, 0)
+        });
+
+        return new TabItem { Header = "Processar", Content = Scroll(panel) };
+    }
+
+    private async void ProcessingCaps_Click(object sender, RoutedEventArgs e)
+    {
+        await RunToOutputAsync("Detectando filtros e encoders do FFmpeg...",
+            async ct => (await _processor.GetCapabilitiesAsync(ct)).Summary);
+    }
+
+    private async void Loudness_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+        await RunToOutputAsync("Medindo loudness EBU R128...", ct => _processor.AnalyzeLoudnessAsync(path, ct));
+    }
+
+    private async void Normalize_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+        await RunToOutputAsync("Normalizando áudio...", ct => _processor.NormalizeAudioAsync(path, ct));
+    }
+
+    private async void Enhance_Click(object sender, RoutedEventArgs e)
+    {
+        var path = PickMediaFile();
+        if (path is null) return;
+        await RunToOutputAsync("Processando vídeo...", ct => _processor.EnhanceVideoAsync(path, ct));
+    }
+
+    private async void Vmaf_Click(object sender, RoutedEventArgs e)
+    {
+        var reference = PickMediaFile();
+        if (reference is null) return;
+        var distorted = PickMediaFile();
+        if (distorted is null) return;
+        await RunToOutputAsync("Calculando VMAF...", ct => _processor.CompareVmafAsync(reference, distorted, ct));
+    }
+
+    private TabItem BuildAiTab()
+    {
+        var panel = Panel();
+        panel.Children.Add(Title("IA local / ONNX"));
+        panel.Children.Add(Description(
+            "ONNX Runtime permite carregar modelos locais sem enviar conteúdo para a nuvem. Esta tela valida modelos e mostra entradas/saídas antes de eles serem usados em módulos especializados."));
+
+        panel.Children.Add(Button("Inspecionar modelo .onnx", InspectOnnx_Click));
+        panel.Children.Add(new TextBlock
+        {
+            Text = "ONNX Runtime: " + _onnx.RuntimeVersion + "\nWhisper local está disponível na guia Legendas.",
+            Margin = new Thickness(0, 14, 0, 0),
+            Foreground = Brush("#AAB4C4")
+        });
+
+        return new TabItem { Header = "IA local", Content = Scroll(panel) };
+    }
+
+    private void InspectOnnx_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Selecionar modelo ONNX",
+            Filter = "Modelo ONNX|*.onnx|Todos os arquivos|*.*"
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            _output.Text = _onnx.Inspect(dialog.FileName);
+            _status.Text = "Modelo ONNX validado.";
+        }
+        catch (Exception ex)
+        {
+            _output.Text = ex.ToString();
+            _status.Text = "Modelo ONNX inválido ou incompatível.";
+        }
+    }
+
+    private TabItem BuildUpdateTab()
+    {
+        var panel = Panel();
+        panel.Children.Add(Title("Atualizações"));
+        panel.Children.Add(Description(
+            "Velopack oferece atualização incremental quando o aplicativo foi instalado pelo instalador Velopack. A release tradicional continua disponível como recuperação."));
+
+        var actions = new WrapPanel();
+        actions.Children.Add(Button("Procurar atualização", CheckUpdate_Click));
+        panel.Children.Add(actions);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"Versão atual: {_updates.CurrentVersion}\nGerenciado pelo Velopack: {(_updates.IsVelopackInstalled ? "sim" : "não")}",
+            Margin = new Thickness(0, 14, 0, 0),
+            Foreground = Brush("#AAB4C4")
+        });
+
+        return new TabItem { Header = "Atualizações", Content = Scroll(panel) };
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!_updates.IsVelopackInstalled)
+            {
+                _status.Text = "Esta instalação não foi criada pelo Velopack. Instale a edição V7 Velopack para updates delta.";
+                return;
+            }
+
+            SetBusy("Consultando GitHub Releases...");
+            var update = await _updates.CheckAsync();
+            if (update is null)
+            {
+                _status.Text = "Nenhuma atualização disponível.";
+                return;
+            }
+
+            var answer = MessageBox.Show(
+                this,
+                "Nova versão disponível: " + update.TargetFullRelease.Version + "\n\nBaixar e reiniciar agora?",
+                "Atualização SanchesTV",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (answer != MessageBoxResult.Yes)
+            {
+                _status.Text = "Atualização adiada.";
+                return;
+            }
+
+            await _updates.DownloadAsync(update, progress =>
+                Dispatcher.Invoke(() => _status.Text = $"Baixando atualização: {progress}%"));
+            _updates.ApplyAndRestart(update);
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Atualização falhou: " + ex.Message;
         }
     }
 
