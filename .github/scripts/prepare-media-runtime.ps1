@@ -59,10 +59,6 @@ if ($ffprobeExe) {
     Copy-Item $ffprobeExe.FullName -Destination (Join-Path $runtimeFfmpeg "ffprobe.exe") -Force
 }
 
-$p2pRuntime = Join-Path $PublishDir "runtime\p2p"
-New-Item -ItemType Directory -Force -Path $p2pRuntime | Out-Null
-Copy-Item $p2pExe -Destination (Join-Path $p2pRuntime "stream-server.exe") -Force
-
 $licenseDir = Join-Path $PublishDir "licenses\media-runtime"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 
