@@ -617,6 +617,8 @@
                                                    Margin="0,3,0,0" HorizontalAlignment="Left">
                                             <Button Style="{StaticResource ModernButton}" Content="−30s"
                                                     MinWidth="58" Click="Rewind_Click" ToolTip="Voltar 30 segundos"/>
+                                            <Button x:Name="TimeshiftButton" Style="{StaticResource ModernButton}" Content="⏱ Timeshift"
+                                                    MinWidth="86" Click="Timeshift_Click" ToolTip="Criar buffer local para pausar e voltar TV ao vivo"/>
                                             <Button Style="{StaticResource ModernButton}" Content="LIVE"
                                                     MinWidth="58" Click="Live_Click" ToolTip="Ir para o ponto ao vivo"/>
                                             <Button x:Name="RecordButton" Style="{StaticResource ModernButton}" Content="● REC"
