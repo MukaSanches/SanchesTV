@@ -41,7 +41,32 @@ public sealed class PortugueseCatalogTests
         Assert.Contains("https://iptv-org.github.io/iptv/languages/por.m3u", urls);
         Assert.Contains("https://iptv-org.github.io/iptv/countries/pt.m3u", urls);
         Assert.Contains("https://raw.githubusercontent.com/LITUATUI/M3UPT/main/M3U/M3UPT.m3u", urls);
-        Assert.Equal(6, PortugueseCatalogRegistry.Sources.Count);
+        Assert.Contains("https://iptv-org.github.io/iptv/categories/movies.m3u", urls);
+        Assert.Contains("https://github.com/iptv-com/iptv/raw/refs/heads/main/lists/brazil.m3u", urls);
+        Assert.Equal(8, PortugueseCatalogRegistry.Sources.Count);
+    }
+
+    [Fact]
+    public void BrazilFull_Filter_Rejects_Obvious_Premium_Channel_Names()
+    {
+        Assert.False(PortugueseCatalogRules.IsIncluded(
+            Make("ESPN 4", "ESPN4.br", "Sports"),
+            PortugueseCatalogFilter.BrazilPublicOnly));
+
+        Assert.True(PortugueseCatalogRules.IsIncluded(
+            Make("TV UFG", "TVUFG.br", "Education"),
+            PortugueseCatalogFilter.BrazilPublicOnly));
+    }
+
+    [Fact]
+    public void Movies_Source_Forces_Movies_Category()
+    {
+        var source = PortugueseCatalogRegistry.Sources.Single(x => x.Name == "IPTV-org Filmes");
+        var channel = PortugueseCatalogRules.ApplyDefaults(
+            Make("Movie Channel", "Movie.test", "Entertainment"),
+            source);
+
+        Assert.Equal("Movies", channel.Category);
     }
 
     [Fact]
