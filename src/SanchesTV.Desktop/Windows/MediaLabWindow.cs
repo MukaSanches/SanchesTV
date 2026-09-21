@@ -20,6 +20,7 @@ public sealed class MediaLabWindow : Window
     private readonly AdvancedMediaProcessor _processor;
     private readonly HyperionService _hyperion;
     private readonly OnnxModelInspector _onnx = new();
+    private readonly MediaMetadataService _metadata = new();
     private readonly AppUpdateService _updates = new();
 
     private readonly ListBox _renderers = new();
@@ -50,7 +51,7 @@ public sealed class MediaLabWindow : Window
         _processor = new AdvancedMediaProcessor(tools);
         _hyperion = new HyperionService(tools);
 
-        Title = "SanchesTV 7 — Media Lab";
+        base.Title = "SanchesTV 7 — Media Lab";
         Width = 900;
         Height = 760;
         MinWidth = 720;
@@ -352,6 +353,30 @@ public sealed class MediaLabWindow : Window
         var distorted = PickMediaFile();
         if (distorted is null) return;
         await RunToOutputAsync("Calculando VMAF...", ct => _processor.CompareVmafAsync(reference, distorted, ct));
+    }
+
+    private TabItem BuildAmbientTab()
+    {
+        var panel = Panel();
+        panel.Children.Add(Title("Ambilight / Hyperion.NG"));
+        panel.Children.Add(Description(
+            "Inicia o Hyperion.NG empacotado com a SanchesTV 7. O hardware de LEDs, WLED e captura deve ser configurado no painel local do Hyperion."));
+
+        var actions = new WrapPanel();
+        actions.Children.Add(Button("▶ Iniciar Hyperion", StartHyperion_Click));
+        actions.Children.Add(Button("Abrir painel local", OpenHyperion_Click));
+        actions.Children.Add(Button("■ Parar Hyperion", StopHyperion_Click));
+        panel.Children.Add(actions);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "O Hyperion roda em processo separado. Se não houver controlador LED configurado, o restante da SanchesTV continua funcionando normalmente.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#8998AD"),
+            Margin = new Thickness(0, 14, 0, 0)
+        });
+
+        return new TabItem { Header = "Ambilight", Content = Scroll(panel) };
     }
 
     private TabItem BuildAiTab()
