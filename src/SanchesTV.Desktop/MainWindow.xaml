@@ -12,7 +12,8 @@
         Foreground="White"
         KeyDown="Window_KeyDown"
         Closing="Window_Closing"
-        SourceInitialized="Window_SourceInitialized">
+        SourceInitialized="Window_SourceInitialized"
+        SizeChanged="Window_SizeChanged">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
                             ResizeBorderThickness="8"
@@ -70,7 +71,7 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="NavigationColumn" Width="232"/>
+                <ColumnDefinition x:Name="NavigationColumn" Width="216"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -149,11 +150,23 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="2">
+                        <TextBlock Text="FONTES E DADOS" Foreground="#6F7C90" FontSize="10"
+                                   FontWeight="SemiBold" Margin="14,0,0,6"/>
+                        <UniformGrid Columns="2" Margin="2,0,2,4">
+                            <Button Style="{StaticResource ModernButton}" Content="+ M3U"
+                                    Click="ImportFile_Click" ToolTip="Importar arquivo M3U/M3U8"/>
+                            <Button Style="{StaticResource ModernButton}" Content="+ URL"
+                                    Click="ImportUrl_Click" ToolTip="Adicionar playlist M3U por URL"/>
+                            <Button Style="{StaticResource ModernButton}" Content="+ Xtream"
+                                    Click="Xtream_Click" ToolTip="Adicionar servidor Xtream do usuário"/>
+                            <Button Style="{StaticResource ModernButton}" Content="+ EPG"
+                                    Click="ImportEpg_Click" ToolTip="Importar guia XMLTV"/>
+                        </UniformGrid>
                         <Button Style="{StaticResource AccentButton}" Content="↻ Atualizar catálogo"
                                 Click="SyncPortugueseCatalog_Click" Margin="5,2"/>
                         <TextBlock x:Name="StatusText" Text="Pronto"
                                    Foreground="#7F8B9F" TextWrapping="Wrap"
-                                   FontSize="10" Margin="10,8,10,0"/>
+                                   FontSize="10" Margin="10,6,10,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -335,10 +348,10 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Margin="0,0,0,16">
+                    <Grid x:Name="BrowseHeader" Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="390"/>
+                            <ColumnDefinition x:Name="SearchColumn" Width="330"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock x:Name="BrowseTitleText" Text="Ao vivo"
@@ -354,12 +367,12 @@
 
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="460"/>
-                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition x:Name="ChannelBrowserColumn" Width="390"/>
+                            <ColumnDefinition x:Name="BrowseGapColumn" Width="14"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="8">
+                        <Border x:Name="ChannelBrowserPanel" Grid.Column="0" Style="{StaticResource CardBorder}" Padding="8">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*"/>
@@ -461,7 +474,11 @@
                                 </Grid.RowDefinitions>
 
                                 <Grid Background="Black">
-                                    <vlc:VideoView x:Name="VideoView"/>
+                                    <vlc:VideoView x:Name="VideoView" Background="Black"/>
+                                    <Border x:Name="VideoDoubleClickSurface"
+                                            Background="#01000000"
+                                            MouseLeftButtonDown="VideoSurface_MouseLeftButtonDown"
+                                            ToolTip="Duplo clique para tela cheia"/>
                                     <Border HorizontalAlignment="Left" VerticalAlignment="Top"
                                             Margin="18" Padding="12,9" CornerRadius="10"
                                             Background="#B012151B">
@@ -517,38 +534,67 @@
                                     </Border>
                                 </Grid>
 
-                                <Border Grid.Row="1" Background="#B9161A22" Padding="10"
+                                <Border x:Name="PlayerCommandBar" Grid.Row="1"
+                                        Background="#F0161A22" Padding="8"
                                         BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0">
                                     <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="160"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
 
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Style="{StaticResource ModernButton}" Content="⏮" Width="42" Click="Previous_Click"/>
-                                            <Button x:Name="PlayPauseButton" Style="{StaticResource AccentButton}" Content="⏯" Width="48" Click="PlayPause_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="⏭" Width="42" Click="Next_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="⏹" Width="42" Click="Stop_Click"/>
-                                            <Button x:Name="MuteButton" Style="{StaticResource ModernButton}" Content="🔊" Width="42" Click="Mute_Click"/>
-                                        </StackPanel>
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <Slider x:Name="VolumeSlider" Grid.Column="1" Minimum="0" Maximum="100"
-                                                Value="80" Margin="8,0"
-                                                ValueChanged="VolumeSlider_ValueChanged"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Style="{StaticResource ModernButton}" Content="⏮" Width="40"
+                                                        ToolTip="Canal anterior" Click="Previous_Click"/>
+                                                <Button x:Name="PlayPauseButton" Style="{StaticResource AccentButton}" Content="⏯"
+                                                        Width="46" ToolTip="Reproduzir/Pausar" Click="PlayPause_Click"/>
+                                                <Button Style="{StaticResource ModernButton}" Content="⏭" Width="40"
+                                                        ToolTip="Próximo canal" Click="Next_Click"/>
+                                                <Button Style="{StaticResource ModernButton}" Content="⏹" Width="40"
+                                                        ToolTip="Parar" Click="Stop_Click"/>
+                                                <Button x:Name="MuteButton" Style="{StaticResource ModernButton}" Content="🔊" Width="40"
+                                                        ToolTip="Mudo" Click="Mute_Click"/>
+                                            </StackPanel>
 
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                            <Button Style="{StaticResource ModernButton}" Content="−30s" Click="Rewind_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="LIVE" Click="Live_Click"/>
-                                            <Button x:Name="RecordButton" Style="{StaticResource ModernButton}" Content="● REC" Click="Record_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="PiP" Click="Pip_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="▦" ToolTip="Multiview" Click="Multiview_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="📱" ToolTip="Controle remoto" Click="Remote_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="ⓘ" ToolTip="Diagnóstico" Click="Diagnostics_Click"/>
-                                            <Button Style="{StaticResource ModernButton}" Content="⛶" ToolTip="Tela cheia" Click="Fullscreen_Click"/>
-                                        </StackPanel>
+                                            <Slider x:Name="VolumeSlider" Grid.Column="1" Minimum="0" Maximum="100"
+                                                    Value="80" Margin="8,0"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip="Volume"
+                                                    ValueChanged="VolumeSlider_ValueChanged"/>
+
+                                            <Button x:Name="FullscreenButton" Grid.Column="3"
+                                                    Style="{StaticResource AccentButton}"
+                                                    Content="⛶  Tela cheia  F11"
+                                                    MinWidth="132" Height="38"
+                                                    Click="Fullscreen_Click"
+                                                    ToolTip="Tela cheia — F11 ou duplo clique no vídeo"/>
+                                        </Grid>
+
+                                        <WrapPanel x:Name="PlayerSecondaryCommands" Grid.Row="1"
+                                                   Margin="0,5,0,0" HorizontalAlignment="Left">
+                                            <Button Style="{StaticResource ModernButton}" Content="−30s"
+                                                    MinWidth="58" Click="Rewind_Click" ToolTip="Voltar 30 segundos"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="LIVE"
+                                                    MinWidth="58" Click="Live_Click" ToolTip="Ir para o ponto ao vivo"/>
+                                            <Button x:Name="RecordButton" Style="{StaticResource ModernButton}" Content="● REC"
+                                                    MinWidth="68" Click="Record_Click" ToolTip="Gravar quando permitido"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="PiP"
+                                                    MinWidth="52" Click="Pip_Click" ToolTip="Picture in Picture"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="▦  Multiview"
+                                                    MinWidth="92" Click="Multiview_Click" ToolTip="Abrir até quatro canais"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="📱  Controle"
+                                                    MinWidth="92" Click="Remote_Click" ToolTip="Controle remoto pelo celular"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="ⓘ  Diagnóstico"
+                                                    MinWidth="100" Click="Diagnostics_Click" ToolTip="Informações técnicas"/>
+                                        </WrapPanel>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -556,19 +602,6 @@
                     </Grid>
                 </Grid>
 
-                <!-- Global actions -->
-                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Orientation="Horizontal" Margin="0,0,32,24"
-                            Panel.ZIndex="50">
-                    <Button Style="{StaticResource ModernButton}" Content="+ M3U"
-                            Click="ImportFile_Click" ToolTip="Importar M3U do computador"/>
-                    <Button Style="{StaticResource ModernButton}" Content="+ URL"
-                            Click="ImportUrl_Click" ToolTip="Adicionar playlist por URL"/>
-                    <Button Style="{StaticResource ModernButton}" Content="+ Xtream"
-                            Click="Xtream_Click"/>
-                    <Button Style="{StaticResource ModernButton}" Content="+ EPG"
-                            Click="ImportEpg_Click"/>
-                </StackPanel>
             </Grid>
         </Grid>
     </Grid>
