@@ -6,6 +6,7 @@ using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
+using SanchesTV.Desktop.P2P;
 using MonoTorrent.Client;
 using SanchesTV.Core.P2P;
 
@@ -76,6 +77,13 @@ internal static class SelfTest
             if (string.IsNullOrWhiteSpace(monoTorrentVersion) ||
                 !P2pMediaPolicy.IsLikelyVideo("selftest.mkv"))
                 return 24;
+
+            var p2pDefaults = new P2pSettings();
+            if (!p2pDefaults.AutoRecovery ||
+                p2pDefaults.InitialBufferMb < 8 ||
+                p2pDefaults.StallRecoverySeconds < 6 ||
+                p2pDefaults.MetadataTimeoutSeconds < 15)
+                return 25;
 
             try { File.Delete(temp); } catch { }
             return 0;
