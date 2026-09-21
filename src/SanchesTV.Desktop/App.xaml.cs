@@ -9,6 +9,7 @@ using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.P2P;
 using MonoTorrent.Client;
 using SanchesTV.Core.P2P;
+using SanchesTV.Desktop.Diagnostics;
 
 namespace SanchesTV.Desktop;
 
@@ -17,6 +18,17 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        AppTelemetry.Initialize();
+        DispatcherUnhandledException += (_, args) =>
+        {
+            AppTelemetry.Error("app.unhandled", args.Exception);
+            MessageBox.Show(
+                "O SanchesTV encontrou um erro inesperado e registrou um diagnóstico local.\n\n" + args.Exception.Message,
+                "SanchesTV 7",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            args.Handled = true;
+        };
 
         if (e.Args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
         {
@@ -28,6 +40,12 @@ public partial class App : Application
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        AppTelemetry.Shutdown();
+        base.OnExit(e);
     }
 }
 
