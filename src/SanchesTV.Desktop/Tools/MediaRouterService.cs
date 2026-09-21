@@ -12,6 +12,8 @@ public sealed record MediaRouterSession(
     Uri RtspUrl,
     Uri HlsUrl,
     Uri WebRtcUrl,
+    Uri RtmpUrl,
+    Uri SrtUrl,
     bool LanEnabled);
 
 public sealed class MediaRouterService : IAsyncDisposable
@@ -85,6 +87,10 @@ hlsAllowOrigins: ["*"]
 webrtc: true
 webrtcAddress: {bind}:8889
 webrtcAllowOrigins: ["*"]
+rtmp: true
+rtmpAddress: {bind}:1935
+srt: true
+srtAddress: {bind}:8890
 
 paths:
   all_others:
@@ -124,6 +130,8 @@ paths:
             new Uri($"rtsp://{host}:8554/{pathName}"),
             new Uri($"http://{host}:8888/{pathName}/index.m3u8"),
             new Uri($"http://{host}:8889/{pathName}"),
+            new Uri($"rtmp://{host}:1935/{pathName}"),
+            new Uri($"srt://{host}:8890?streamid=read:{pathName}"),
             enableLan);
         return Current;
     }
