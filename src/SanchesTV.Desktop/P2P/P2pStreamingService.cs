@@ -69,6 +69,7 @@ public sealed class P2pStreamingService : IAsyncDisposable
             throw new ArgumentException("Magnet inválido.", nameof(magnetText));
 
         return await LoadAsync(
+            magnet.InfoHashes.V1OrV2.ToHex(),
             async (engine, savePath) => await engine.AddStreamingAsync(
                 magnet,
                 savePath,
@@ -85,6 +86,7 @@ public sealed class P2pStreamingService : IAsyncDisposable
 
         var torrent = await Torrent.LoadAsync(torrentPath);
         return await LoadAsync(
+            torrent.InfoHashes.V1OrV2.ToHex(),
             async (engine, savePath) => await engine.AddStreamingAsync(
                 torrent,
                 savePath,
@@ -93,6 +95,7 @@ public sealed class P2pStreamingService : IAsyncDisposable
     }
 
     private async Task<IReadOnlyList<P2pFileItem>> LoadAsync(
+        string sessionKey,
         Func<ClientEngine, string, Task<TorrentManager>> createManager,
         CancellationToken cancellationToken)
     {
@@ -103,7 +106,9 @@ public sealed class P2pStreamingService : IAsyncDisposable
             await StopSessionCoreAsync(clearDownloadedData: !Settings.KeepDownloadedData, cancellationToken);
 
             await EnsureEngineAsync(cancellationToken);
-            _sessionDirectory = _cache.CreateSessionDirectory();
+            _sessionDirectory = _cache.CreateSessionDirectory(
+                sessionKey,
+                reset: !Settings.KeepDownloadedData);
 
             _manager = await createManager(_engine!, _sessionDirectory);
             await _manager.StartAsync();

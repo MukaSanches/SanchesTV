@@ -10,7 +10,7 @@ O SanchesTV não integra busca automática em indexadores de torrents.
 
 ## Pipeline
 
-magnet/.torrent -> MonoTorrent -> prioridade de pieces -> HTTP local 127.0.0.1 -> libmpv -> LibVLC fallback
+magnet/.torrent -> MonoTorrent embutido -> prioridade de pieces -> HTTP local 127.0.0.1 -> libmpv -> LibVLC fallback
 
 O StreamProvider do MonoTorrent fornece um stream seekable. Quando o player busca uma área ainda não baixada, os pieces necessários passam a ser priorizados.
 
@@ -40,3 +40,7 @@ O StreamProvider do MonoTorrent fornece um stream seekable. Quando o player busc
 
 MonoTorrent 3.9.0-alpha.unstable.rev0000, fixado no projeto.
 Licença MIT.
+
+## Continuidade
+
+Quando a opção de manter cache está ativa, cada torrent usa uma pasta estável derivada do info-hash. Ao abrir novamente o mesmo magnet ou .torrent, o motor pode reutilizar os dados já presentes e o fast-resume. Por padrão esse comportamento fica desligado e os dados da sessão são removidos ao encerrar.

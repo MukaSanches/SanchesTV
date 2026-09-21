@@ -54,10 +54,24 @@ internal sealed class P2pCacheManager
         await File.WriteAllTextAsync(SettingsPath, json, cancellationToken);
     }
 
-    public string CreateSessionDirectory()
+    public string CreateSessionDirectory(string sessionKey, bool reset)
     {
-        var path = Path.Combine(SessionsRoot, DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff"));
+        var safeKey = new string((sessionKey ?? string.Empty)
+            .Where(char.IsLetterOrDigit)
+            .Take(80)
+            .ToArray());
+
+        if (safeKey.Length < 8)
+            safeKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(sessionKey ?? Guid.NewGuid().ToString("N"))));
+
+        var path = Path.Combine(SessionsRoot, safeKey.ToLowerInvariant());
+
+        if (reset)
+            TryDeleteDirectory(path);
+
         Directory.CreateDirectory(path);
+        try { Directory.SetLastWriteTimeUtc(path, DateTime.UtcNow); } catch { }
         return path;
     }
 

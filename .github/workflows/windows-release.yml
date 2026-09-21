@@ -58,7 +58,6 @@ jobs:
         run: |
           if (-not (Test-Path ".\artifacts\publish\libmpv-2.dll")) { throw "libmpv-2.dll missing" }
           if (-not (Test-Path ".\artifacts\publish\runtime\ffmpeg\ffmpeg.exe")) { throw "ffmpeg.exe missing" }
-          if (-not (Test-Path ".\artifacts\publish\runtime\p2p\stream-server.exe")) { throw "P2P stream-server missing" }
 
       - name: Published app self-test
         shell: pwsh

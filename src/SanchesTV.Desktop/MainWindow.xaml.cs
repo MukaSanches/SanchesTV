@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly P2pStreamingService _p2p = new();
     private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RemoteControlServer? _remote;
+    private P2pStreamingWindow? _p2pWindow;
     private IReadOnlyList<Channel> _allChannels = Array.Empty<Channel>();
     private List<ChannelListItem> _visibleItems = new();
     private Channel? _currentChannel;
@@ -186,7 +187,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 6.0...");
+            SetBusy(true, "Inicializando SanchesTV 6.1...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -272,7 +273,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
-                    "Catálogo SanchesTV 6.0",
+                    "Catálogo SanchesTV 6.1",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -615,44 +616,86 @@ public partial class MainWindow : Window
 
     private void P2p_Click(object sender, RoutedEventArgs e)
     {
-        var window = new P2pStreamingWindow(_p2p) { Owner = this };
-        window.PlayRequested += async (_, uri) => await PlayP2pUriAsync(uri);
-        window.Show();
+        if (_p2pWindow is { IsVisible: true })
+        {
+            _p2pWindow.Activate();
+            return;
+        }
+
+        _p2pWindow = new P2pStreamingWindow(
+            _p2p,
+            PlayP2pStreamAsync,
+            StopP2pPlaybackAsync)
+        {
+            Owner = this
+        };
+        _p2pWindow.Closed += (_, _) => _p2pWindow = null;
+        _p2pWindow.Show();
     }
 
-    private async Task PlayP2pUriAsync(Uri uri)
+    private async Task PlayP2pStreamAsync(Uri uri, string displayName)
     {
         try
         {
             SetBusy(true, "Preparando buffer P2P...");
+
             var source = new ChannelSource(
                 Guid.NewGuid(),
-                "P2P local",
+                "P2P",
                 uri,
                 0);
 
+            ChannelSource active;
+            Exception? mpvFailure = null;
+
             if (await EnsureMpvReadyAsync())
             {
-                await _vlc.StopAsync();
-                SetVideoBackend(PlaybackBackend.Mpv);
-                _activeSource = await _mpv.OpenWithFallbackAsync([source]);
-                _activeBackend = PlaybackBackend.Mpv;
+                try
+                {
+                    await _vlc.StopAsync();
+                    SetVideoBackend(PlaybackBackend.Mpv);
+                    active = await _mpv.OpenWithFallbackAsync([source]);
+                    _activeBackend = PlaybackBackend.Mpv;
+                }
+                catch (Exception ex)
+                {
+                    mpvFailure = ex;
+                    await _mpv.StopAsync();
+                    SetVideoBackend(PlaybackBackend.Vlc);
+                    active = await _vlc.OpenWithFallbackAsync([source]);
+                    _activeBackend = PlaybackBackend.Vlc;
+                }
             }
             else
             {
                 SetVideoBackend(PlaybackBackend.Vlc);
-                _activeSource = await _vlc.OpenWithFallbackAsync([source]);
+                active = await _vlc.OpenWithFallbackAsync([source]);
                 _activeBackend = PlaybackBackend.Vlc;
             }
 
+            _activeSource = active;
+            _currentChannel = null;
+            _showCompactChannels = false;
+
             HomeView.Visibility = Visibility.Collapsed;
             BrowseView.Visibility = Visibility.Visible;
+            BrowseTitleText.Text = "Streaming P2P";
+            BrowseSubtitleText.Text = "BitTorrent progressivo com buffer e seek inteligente.";
             PlayerPanel.Visibility = Visibility.Visible;
-            PlayerChannelText.Text = "Streaming P2P";
-            NowEpgText.Text = "Reprodução progressiva • cache local • seek HTTP Range";
-            NextEpgText.Text = "Fonte fornecida pelo usuário";
-            StatusText.Text = $"P2P • {(_activeBackend == PlaybackBackend.Mpv ? "libmpv" : "LibVLC")}";
-            TitleStatusText.Text = "Streaming P2P";
+            ApplyResponsiveLayout();
+
+            NowPlayingText.Text = displayName;
+            PlayerInitialText.Text = "P2P";
+            SourceBadgeText.Text = "P2P";
+            SetPlayerLogo(null);
+            NowEpgText.Text = "Reprodução progressiva • cache local • seek por pieces";
+            NextEpgText.Text = "Fonte fornecida pelo usuário • HTTP somente em 127.0.0.1";
+
+            var engine = _activeBackend == PlaybackBackend.Mpv ? "libmpv" : "LibVLC";
+            StatusText.Text = mpvFailure is null
+                ? $"P2P • {engine}"
+                : "P2P • LibVLC fallback";
+            TitleStatusText.Text = $"{displayName} • P2P";
         }
         catch (Exception ex)
         {
@@ -662,6 +705,21 @@ public partial class MainWindow : Window
         {
             SetBusy(false);
         }
+    }
+
+    private async Task StopP2pPlaybackAsync()
+    {
+        if (!string.Equals(_activeSource?.Provider, "P2P", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
+            await _mpv.StopAsync();
+        else
+            await _vlc.StopAsync();
+
+        _activeSource = null;
+        StatusText.Text = "P2P parado";
+        TitleStatusText.Text = "Streaming P2P encerrado";
     }
 
     private async void HomeList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -1144,6 +1202,7 @@ public partial class MainWindow : Window
             $"{engineDetails}\n\n" +
             $"{_audio.GetSummary()}\n" +
             $"FFmpeg recorder: {ffmpeg}\n" +
+            $"P2P: {_p2p.GetStats().State} • peers {_p2p.GetStats().Peers} • cache {_p2p.GetStats().CacheText}\n" +
             $"Catálogo local: {_allChannels.Count:N0} canais\n" +
             $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";

@@ -128,7 +128,7 @@ public sealed class P2pStreamingWindow : Window
 
         var settings = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
 
-        _keepCache.Content = "Manter dados para continuar depois";
+        _keepCache.Content = "Manter cache para continuar ao abrir o mesmo torrent";
         _keepCache.Margin = new Thickness(0, 0, 14, 8);
         settings.Children.Add(_keepCache);
 

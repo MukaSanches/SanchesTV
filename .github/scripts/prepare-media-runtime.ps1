@@ -11,8 +11,6 @@ $mpvSha = "c8d52781ed8773bf414faf12aa74415ecdf4f2ecc7254a5d633d76266d131b9d"
 $ffmpegUrl = "https://github.com/zhongfly/mpv-winbuild/releases/download/2026-09-20-e76a35ec95/ffmpeg-lgpl-x86_64-git-bf56c9459.7z"
 $ffmpegSha = "c42179573d9d50cc22c547eba21690b5cd2d131e01f892fa6cb9432a774cf2a8"
 
-$p2pUrl = "https://github.com/stremio-native/stream-server/releases/download/v0.1.8/stream-server-windows-amd64.exe"
-$p2pSha = "90b7a14b282a9e649fba5adb6112c2c191dba884ec762f8650f45ccf06e17e09"
 
 $work = Join-Path $env:RUNNER_TEMP "sanchestv-media-runtime"
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
@@ -30,7 +28,6 @@ function Get-VerifiedArchive([string]$url, [string]$sha, [string]$name) {
 
 $mpvArchive = Get-VerifiedArchive $mpvUrl $mpvSha "libmpv.7z"
 $ffmpegArchive = Get-VerifiedArchive $ffmpegUrl $ffmpegSha "ffmpeg.7z"
-$p2pExe = Get-VerifiedArchive $p2pUrl $p2pSha "stream-server.exe"
 
 $mpvDir = Join-Path $work "mpv"
 $ffmpegDir = Join-Path $work "ffmpeg"
@@ -70,7 +67,7 @@ $licenseDir = Join-Path $PublishDir "licenses\media-runtime"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 
 $provenance = @"
-SanchesTV 6.0 media runtime
+SanchesTV 6.1 media runtime
 
 libmpv package:
 $mpvUrl
@@ -82,11 +79,6 @@ $ffmpegUrl
 SHA-256: $ffmpegSha
 Package: ffmpeg-lgpl x86_64.
 
-P2P streaming sidecar:
-$p2pUrl
-SHA-256: $p2pSha
-Project: stremio-native/stream-server v0.1.8.
-Used only for user-supplied magnet/.torrent playback; SanchesTV does not bundle torrent indexers.
 
 The mpv-winbuild project documents FFmpeg, libplacebo, libass and dav1d among the integrated components.
 "@

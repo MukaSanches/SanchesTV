@@ -6,6 +6,8 @@ using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
+using MonoTorrent.Client;
+using SanchesTV.Core.P2P;
 
 namespace SanchesTV.Desktop;
 
@@ -69,6 +71,11 @@ internal static class SelfTest
             var audio = new WindowsAudioService();
             if (string.IsNullOrWhiteSpace(audio.NAudioVersion))
                 return 23;
+
+            var monoTorrentVersion = typeof(ClientEngine).Assembly.GetName().Version?.ToString();
+            if (string.IsNullOrWhiteSpace(monoTorrentVersion) ||
+                !P2pMediaPolicy.IsLikelyVideo("selftest.mkv"))
+                return 24;
 
             try { File.Delete(temp); } catch { }
             return 0;
