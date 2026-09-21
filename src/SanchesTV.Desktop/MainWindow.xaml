@@ -3,10 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 5.0"
+        Title="SanchesTV 5.1"
         Width="1540" Height="920"
         MinWidth="1120" MinHeight="700"
         WindowStyle="None"
+        WindowState="Maximized"
         ResizeMode="CanResize"
         Background="#0C0E13"
         Foreground="White"
@@ -51,7 +52,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="5.0 • Fluent Cinema" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="5.1 • Fluent Cinema" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
