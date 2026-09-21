@@ -3,18 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnLastWindowClose">
     <Application.Resources>
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#242831"/>
-            <Setter Property="BorderBrush" Value="#363C49"/>
-            <Setter Property="Padding" Value="10,7"/>
-            <Setter Property="Margin" Value="3"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#171A20"/>
-            <Setter Property="BorderBrush" Value="#363C49"/>
-            <Setter Property="Padding" Value="8"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/FluentTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
