@@ -18,6 +18,9 @@
     <PackageReference Include="NAudio" Version="3.1.0" />
     <PackageReference Include="MonoTorrent" Version="3.9.0-alpha.unstable.rev0000" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.19.0" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\licenses\MonoTorrent-LICENSE.txt" Link="licenses\MonoTorrent-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
