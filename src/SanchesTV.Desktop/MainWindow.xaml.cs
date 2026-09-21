@@ -642,7 +642,7 @@ public partial class MainWindow : Window
 
     private void MediaLab_Click(object sender, RoutedEventArgs e)
     {
-        new MediaLabWindow(_mediaTools, _mediaRouter, () => _activeSource)
+        new MediaLabWindow(_mediaTools, _mediaRouter, () => _activeSource, _hardware)
         {
             Owner = this
         }.Show();
