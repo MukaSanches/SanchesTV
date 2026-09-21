@@ -4,6 +4,10 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using SanchesTV.Core.Models;
 using SanchesTV.Desktop.Tools;
+using SanchesTV.Desktop.Diagnostics;
+using SanchesTV.Desktop.AI;
+using SanchesTV.Desktop.Update;
+using Velopack;
 using SanchesTV.Desktop.AI;
 using SanchesTV.Desktop.Update;
 
@@ -37,11 +41,14 @@ public sealed class MediaLabWindow : Window
     public MediaLabWindow(
         MediaToolsService tools,
         MediaRouterService router,
-        Func<ChannelSource?> sourceProvider)
+        Func<ChannelSource?> sourceProvider,
+        HardwareMonitorService hardware)
     {
         _tools = tools;
         _router = router;
         _sourceProvider = sourceProvider;
+        _hardware = hardware;
+        _processor = new AdvancedMediaProcessor(tools);
         _processor = new AdvancedMediaProcessor(tools);
 
         Title = "SanchesTV 7 — Media Lab";
