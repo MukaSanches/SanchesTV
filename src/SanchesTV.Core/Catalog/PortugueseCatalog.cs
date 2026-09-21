@@ -1,3 +1,5 @@
+using Polly;
+using Polly.Retry;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 
@@ -180,6 +182,21 @@ public static class PortugueseCatalogRules
 
 public sealed class PortugueseCatalogSyncService(HttpClient httpClient)
 {
+    private readonly ResiliencePipeline<string> _downloadPipeline =
+        new ResiliencePipelineBuilder<string>()
+            .AddRetry(new RetryStrategyOptions<string>
+            {
+                MaxRetryAttempts = 2,
+                Delay = TimeSpan.FromMilliseconds(450),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                ShouldHandle = new PredicateBuilder<string>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>()
+            })
+            .AddTimeout(TimeSpan.FromSeconds(25))
+            .Build();
+
     public async Task<PortugueseCatalogSyncResult> DownloadAsync(CancellationToken cancellationToken = default)
     {
         var channels = new List<Channel>();
@@ -190,9 +207,12 @@ public sealed class PortugueseCatalogSyncService(HttpClient httpClient)
         {
             try
             {
-                using var response = await httpClient.GetAsync(source.PlaylistUrl, cancellationToken);
-                response.EnsureSuccessStatusCode();
-                var text = await response.Content.ReadAsStringAsync(cancellationToken);
+                var text = await _downloadPipeline.ExecuteAsync(async token =>
+                {
+                    using var response = await httpClient.GetAsync(source.PlaylistUrl, token);
+                    response.EnsureSuccessStatusCode();
+                    return await response.Content.ReadAsStringAsync(token);
+                }, cancellationToken);
 
                 var parsed = M3uParser.Parse(text, source.Name)
                     .Where(c => PortugueseCatalogRules.IsIncluded(c, source.Filter))
