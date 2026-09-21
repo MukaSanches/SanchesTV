@@ -113,7 +113,10 @@ internal static class SelfTest
                 tools.TsAnalyzePath is null ||
                 tools.CcExtractorPath is null ||
                 !File.Exists(tools.WhisperPath) ||
-                !File.Exists(tools.WhisperModelPath))
+                !File.Exists(tools.WhisperModelPath) ||
+                tools.RifePath is null ||
+                tools.RealEsrganPath is null ||
+                tools.HyperionPath is null)
                 return 31;
 
             if (new FileInfo(tools.WhisperModelPath).Length < 50_000_000)
