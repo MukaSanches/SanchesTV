@@ -68,6 +68,9 @@ jobs:
           if (-not (Get-ChildItem ".\artifacts\publish\runtime\ccextractor" -Recurse -Filter "ccextractorwinfull.exe" -ErrorAction SilentlyContinue)) { throw "CCExtractor missing" }
           if (-not (Test-Path ".\artifacts\publish\runtime\whisper\whisper-cli.exe")) { throw "whisper-cli.exe missing" }
           if (-not (Test-Path ".\artifacts\publish\runtime\whisper\ggml-tiny.bin")) { throw "Whisper model missing" }
+          if (-not (Get-ChildItem ".\artifacts\publish\runtime\realesrgan" -Recurse -Filter "realesrgan-ncnn-vulkan.exe" -ErrorAction SilentlyContinue)) { throw "Real-ESRGAN missing" }
+          if (-not (Get-ChildItem ".\artifacts\publish\runtime\rife" -Recurse -Filter "rife-ncnn-vulkan.exe" -ErrorAction SilentlyContinue)) { throw "RIFE missing" }
+          if (-not (Get-ChildItem ".\artifacts\publish\runtime\hyperion" -Recurse -Include "hyperiond.exe","Hyperion.exe" -ErrorAction SilentlyContinue)) { throw "Hyperion missing" }
 
       - name: Published app self-test
         shell: pwsh
