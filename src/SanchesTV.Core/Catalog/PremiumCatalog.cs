@@ -21,14 +21,19 @@ public static class PremiumCatalog
             "120+ canais ao vivo anunciados",
             "TV aberta e por assinatura, com conteúdo adicional conforme o plano contratado.",
             [
-                "ESPN", "ESPN 2", "ESPN 3", "ESPN 4",
-                "TNT", "TNT Séries", "Warner Channel", "Space", "Cinemax",
-                "Discovery Channel", "Discovery Home & Health", "Discovery Kids",
+                "ESPN", "ESPN 2", "ESPN 3", "ESPN 4", "ESPN 5",
+                "sportv", "sportv 2", "sportv 3",
+                "TNT", "TNT Séries", "TNT Novelas", "Warner Channel", "Space", "Cinemax",
+                "Universal TV", "Studio Universal", "Sony", "AXN", "AMC", "A&E",
+                "Comedy Central", "Paramount Network", "Megapix", "Canal Brasil",
+                "GloboNews", "Multishow", "GNT", "Globoplay Novelas", "Modo Viagem",
+                "Canal OFF", "E!", "TLC", "Arte1", "Food Network",
+                "Discovery Home & Health", "ID", "HGTV", "Lifetime",
                 "Cartoon Network", "Cartoonito", "Nickelodeon", "Nick Jr.",
-                "History", "A&E", "AXN", "Sony Channel", "Sony Movies",
-                "Paramount Network", "MTV", "Food Network", "HGTV",
-                "GloboNews", "Multishow", "GNT", "sportv", "Canal Brasil",
-                "Telecine", "Premiere"
+                "Gloob", "Gloobinho", "TV Rá Tim Bum", "Tooncast",
+                "Futura", "Curta!", "Fish TV", "WooHoo", "BIS", "MTV",
+                "PlayTV", "Music Box Brazil", "Travel Box Brasil", "Sabor & Arte",
+                "CNN Brasil Money", "Prime Box Brazil", "Telecine", "Premiere"
             ]),
         new(
             "zapping",
