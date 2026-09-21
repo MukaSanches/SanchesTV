@@ -12,6 +12,18 @@ public sealed class MediaToolsService
     public string WhisperPath => Path.Combine(AppContext.BaseDirectory, "runtime", "whisper", "whisper-cli.exe");
     public string WhisperModelPath => Path.Combine(AppContext.BaseDirectory, "runtime", "whisper", "ggml-tiny.bin");
 
+    public string? RifePath => FindExecutable(
+        Path.Combine(AppContext.BaseDirectory, "runtime", "rife"),
+        "rife-ncnn-vulkan.exe");
+
+    public string? RealEsrganPath => FindExecutable(
+        Path.Combine(AppContext.BaseDirectory, "runtime", "realesrgan"),
+        "realesrgan-ncnn-vulkan.exe");
+
+    public string? HyperionPath =>
+        FindExecutable(Path.Combine(AppContext.BaseDirectory, "runtime", "hyperion"), "hyperiond.exe")
+        ?? FindExecutable(Path.Combine(AppContext.BaseDirectory, "runtime", "hyperion"), "Hyperion.exe");
+
     public string? TsAnalyzePath => FindExecutable(
         Path.Combine(AppContext.BaseDirectory, "runtime", "tsduck"),
         "tsanalyze.exe");
@@ -28,7 +40,10 @@ public sealed class MediaToolsService
             $"MediaMTX: {(File.Exists(MediaMtxPath) ? "OK" : "ausente")}",
             $"TSDuck: {(TsAnalyzePath is not null ? "OK" : "ausente")}",
             $"CCExtractor: {(CcExtractorPath is not null ? "OK" : "ausente")}",
-            $"whisper.cpp: {(File.Exists(WhisperPath) && File.Exists(WhisperModelPath) ? "OK" : "ausente")}");
+            $"whisper.cpp: {(File.Exists(WhisperPath) && File.Exists(WhisperModelPath) ? "OK" : "ausente")}",
+            $"RIFE Vulkan: {(RifePath is not null ? "OK" : "ausente")}",
+            $"Real-ESRGAN Vulkan: {(RealEsrganPath is not null ? "OK" : "ausente")}",
+            $"Hyperion.NG: {(HyperionPath is not null ? "OK" : "ausente")}");
     }
 
     public async Task<string> ProbeAsync(ChannelSource source, CancellationToken cancellationToken = default)
@@ -173,6 +188,10 @@ public sealed class MediaToolsService
             lines.Add("CCExtractor: " + FirstLine(await RunAsync(cc, ["--version"], TimeSpan.FromSeconds(8), cancellationToken)));
         if (File.Exists(WhisperPath))
             lines.Add("whisper.cpp: " + FirstLine(await RunAsync(WhisperPath, ["--help"], TimeSpan.FromSeconds(8), cancellationToken)));
+        if (RifePath is { } rife)
+            lines.Add("RIFE: " + FirstLine(await RunAsync(rife, ["-h"], TimeSpan.FromSeconds(8), cancellationToken)));
+        if (RealEsrganPath is { } esr)
+            lines.Add("Real-ESRGAN: " + FirstLine(await RunAsync(esr, ["-h"], TimeSpan.FromSeconds(8), cancellationToken)));
 
         return string.Join(Environment.NewLine, lines);
     }
