@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 6.0"
+        Title="SanchesTV 6.1"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -66,6 +66,7 @@
                                 <MenuItem Header="Adicionar URL M3U" Click="ImportUrl_Click"/>
                                 <MenuItem Header="Adicionar Xtream" Click="Xtream_Click"/>
                                 <MenuItem Header="Importar EPG" Click="ImportEpg_Click"/>
+                                <MenuItem Header="Streaming P2P" Click="P2p_Click"/>
                                 <MenuItem Header="Atualizar catálogo" Click="SyncPortugueseCatalog_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
@@ -81,7 +82,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="6.0 • Dual Engine Cinema" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="6.1 • Dual Engine + P2P" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -188,6 +189,8 @@
                             <Button Style="{StaticResource ModernButton}" Content="+ EPG"
                                     Click="ImportEpg_Click" ToolTip="Importar guia XMLTV"/>
                         </UniformGrid>
+                        <Button Style="{StaticResource ModernButton}" Content="◉ Streaming P2P"
+                                Click="P2p_Click" Margin="5,2" ToolTip="Assistir magnet ou .torrent autorizado sem esperar o download completo"/>
                         <Button Style="{StaticResource AccentButton}" Content="↻ Atualizar catálogo"
                                 Click="SyncPortugueseCatalog_Click" Margin="5,2"/>
                         <TextBlock x:Name="StatusText" Text="Pronto"
