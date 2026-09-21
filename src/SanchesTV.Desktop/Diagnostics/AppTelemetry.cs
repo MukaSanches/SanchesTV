@@ -33,11 +33,11 @@ public static class AppTelemetry
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File(
+                new Serilog.Formatting.Json.JsonFormatter(),
                 Path.Combine(LogDirectory, "sanchestv-.jsonl"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,
-                shared: true,
-                formatter: new Serilog.Formatting.Json.JsonFormatter())
+                shared: true)
             .CreateLogger();
 
         _traces = Sdk.CreateTracerProviderBuilder()
