@@ -1,3 +1,4 @@
+using Xunit;
 using SanchesTV.Core.Search;
 
 namespace SanchesTV.Tests;
