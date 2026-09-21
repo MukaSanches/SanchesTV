@@ -126,6 +126,8 @@ public sealed class MediaLabWindow : Window
         actions.Children.Add(Button("■ Parar roteador", StopRouter_Click));
         actions.Children.Add(Button("Copiar HLS", CopyHls_Click));
         actions.Children.Add(Button("Copiar WebRTC", CopyWebRtc_Click));
+        actions.Children.Add(Button("Copiar SRT", CopySrt_Click));
+        actions.Children.Add(Button("Copiar RTMP", CopyRtmp_Click));
         panel.Children.Add(actions);
 
         var endpoint = new TextBlock
@@ -151,7 +153,7 @@ public sealed class MediaLabWindow : Window
             var s = _router.Current;
             if (s is null)
                 return "Roteador parado.";
-            return $"RTSP: {s.RtspUrl}\nHLS: {s.HlsUrl}\nWebRTC: {s.WebRtcUrl}\nLAN: {(s.LanEnabled ? "sim" : "não")}";
+            return $"RTSP: {s.RtspUrl}\nHLS: {s.HlsUrl}\nWebRTC: {s.WebRtcUrl}\nSRT: {s.SrtUrl}\nRTMP: {s.RtmpUrl}\nLAN: {(s.LanEnabled ? "sim" : "não")}";
         }
     }
 
@@ -593,7 +595,7 @@ public sealed class MediaLabWindow : Window
             _status.Text = "Roteador ativo.";
             RefreshBindings();
             MessageBox.Show(this,
-                $"HLS:\n{session.HlsUrl}\n\nWebRTC:\n{session.WebRtcUrl}\n\nRTSP:\n{session.RtspUrl}",
+                $"HLS:\n{session.HlsUrl}\n\nWebRTC:\n{session.WebRtcUrl}\n\nRTSP:\n{session.RtspUrl}\n\nSRT:\n{session.SrtUrl}\n\nRTMP:\n{session.RtmpUrl}",
                 "SanchesTV Media Router",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -623,6 +625,18 @@ public sealed class MediaLabWindow : Window
     {
         if (_router.Current is { } session)
             Clipboard.SetText(session.WebRtcUrl.ToString());
+    }
+
+    private void CopySrt_Click(object sender, RoutedEventArgs e)
+    {
+        if (_router.Current is { } session)
+            Clipboard.SetText(session.SrtUrl.ToString());
+    }
+
+    private void CopyRtmp_Click(object sender, RoutedEventArgs e)
+    {
+        if (_router.Current is { } session)
+            Clipboard.SetText(session.RtmpUrl.ToString());
     }
 
     private async void ProbeCurrent_Click(object sender, RoutedEventArgs e)
