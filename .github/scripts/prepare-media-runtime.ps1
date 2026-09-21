@@ -11,6 +11,11 @@ $mpvSha = "c8d52781ed8773bf414faf12aa74415ecdf4f2ecc7254a5d633d76266d131b9d"
 $ffmpegUrl = "https://github.com/zhongfly/mpv-winbuild/releases/download/2026-09-20-e76a35ec95/ffmpeg-lgpl-x86_64-git-bf56c9459.7z"
 $ffmpegSha = "c42179573d9d50cc22c547eba21690b5cd2d131e01f892fa6cb9432a774cf2a8"
 
+# ffprobe separado e estático (LGPL) para diagnóstico V7.
+# Mantemos o FFmpeg atual do mpv-winbuild para não alterar o runtime de gravação/player.
+$ffprobeUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-9.0.zip"
+$ffprobeSha = "942618af55212bc9f13037cdfb05bd595b1a288ccd43427649ad33a0843b5d72"
+
 
 $work = Join-Path $env:RUNNER_TEMP "sanchestv-media-runtime"
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
@@ -28,16 +33,20 @@ function Get-VerifiedArchive([string]$url, [string]$sha, [string]$name) {
 
 $mpvArchive = Get-VerifiedArchive $mpvUrl $mpvSha "libmpv.7z"
 $ffmpegArchive = Get-VerifiedArchive $ffmpegUrl $ffmpegSha "ffmpeg.7z"
+$ffprobeArchive = Get-VerifiedArchive $ffprobeUrl $ffprobeSha "ffprobe.zip"
 
 $mpvDir = Join-Path $work "mpv"
 $ffmpegDir = Join-Path $work "ffmpeg"
-New-Item -ItemType Directory -Force -Path $mpvDir,$ffmpegDir | Out-Null
+$ffprobeDir = Join-Path $work "ffprobe"
+New-Item -ItemType Directory -Force -Path $mpvDir,$ffmpegDir,$ffprobeDir | Out-Null
 
 & 7z x $mpvArchive "-o$mpvDir" -y | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract libmpv." }
 
 & 7z x $ffmpegArchive "-o$ffmpegDir" -y | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Failed to extract FFmpeg." }
+
+Expand-Archive -Path $ffprobeArchive -DestinationPath $ffprobeDir -Force
 
 $mpvDll = Get-ChildItem $mpvDir -Recurse -Filter "libmpv-2.dll" | Select-Object -First 1
 if (-not $mpvDll) { throw "libmpv-2.dll not found in archive." }
@@ -54,10 +63,9 @@ $runtimeFfmpeg = Join-Path $PublishDir "runtime\ffmpeg"
 New-Item -ItemType Directory -Force -Path $runtimeFfmpeg | Out-Null
 Copy-Item $ffmpegExe.FullName -Destination (Join-Path $runtimeFfmpeg "ffmpeg.exe") -Force
 
-$ffprobeExe = Get-ChildItem $ffmpegDir -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
-if ($ffprobeExe) {
-    Copy-Item $ffprobeExe.FullName -Destination (Join-Path $runtimeFfmpeg "ffprobe.exe") -Force
-}
+$ffprobeExe = Get-ChildItem $ffprobeDir -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
+if (-not $ffprobeExe) { throw "ffprobe.exe not found in verified diagnostic archive." }
+Copy-Item $ffprobeExe.FullName -Destination (Join-Path $runtimeFfmpeg "ffprobe.exe") -Force
 
 $licenseDir = Join-Path $PublishDir "licenses\media-runtime"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
@@ -75,6 +83,11 @@ $ffmpegUrl
 SHA-256: $ffmpegSha
 Package: ffmpeg-lgpl x86_64.
 
+FFprobe diagnostic package:
+$ffprobeUrl
+SHA-256: $ffprobeSha
+Package: BtbN FFmpeg n9.0 win64 LGPL; only ffprobe.exe is copied into the SanchesTV runtime.
+
 
 The mpv-winbuild project documents FFmpeg, libplacebo, libass and dav1d among the integrated components.
 "@
@@ -82,4 +95,5 @@ $provenance | Out-File (Join-Path $licenseDir "RUNTIME-PROVENANCE.txt") -Encodin
 
 Write-Host "libmpv: $($mpvDll.FullName)"
 Write-Host "ffmpeg: $($ffmpegExe.FullName)"
+Write-Host "ffprobe: $($ffprobeExe.FullName)"
 Write-Host "Media runtime prepared in $PublishDir"
