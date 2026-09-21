@@ -22,6 +22,7 @@ using SanchesTV.Desktop.Remote;
 using SanchesTV.Desktop.Windows;
 using SanchesTV.Desktop.Tools;
 using SanchesTV.Desktop.Recording;
+using SanchesTV.Desktop.Diagnostics;
 
 namespace SanchesTV.Desktop;
 
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
     private readonly WindowsAudioService _audio = new();
     private readonly P2pStreamingService _p2p = new();
     private readonly MediaToolsService _mediaTools = new();
+    private readonly HardwareMonitorService _hardware = new();
     private readonly MediaRouterService _mediaRouter;
     private readonly RecordingSchedulerService _recordingScheduler;
     private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1202,7 +1204,7 @@ public partial class MainWindow : Window
 
     private void AudioVideo_Click(object sender, RoutedEventArgs e)
     {
-        new AudioVideoSettingsWindow(_mpv, _audio) { Owner = this }.ShowDialog();
+        new AudioVideoSettingsWindow(_mpv, _audio, _hardware) { Owner = this }.ShowDialog();
     }
 
     private void Diagnostics_Click(object sender, RoutedEventArgs e)
@@ -1389,6 +1391,7 @@ public partial class MainWindow : Window
             await _remote.DisposeAsync();
 
         _recorder.Dispose();
+        _hardware.Dispose();
         await _mediaRouter.DisposeAsync();
         await _recordingScheduler.DisposeAsync();
         await _p2p.DisposeAsync();
