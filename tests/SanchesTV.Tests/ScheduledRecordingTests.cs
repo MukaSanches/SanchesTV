@@ -1,3 +1,4 @@
+using Xunit;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
