@@ -6,6 +6,7 @@ namespace SanchesTV.Core.Catalog;
 public enum PortugueseCatalogFilter
 {
     All,
+    AllEntries,
     M3uPtTelevision,
     LusophoneCountryGroup
 }
@@ -29,27 +30,24 @@ public static class PortugueseCatalogRegistry
 {
     public static IReadOnlyList<PortugueseCatalogSource> Sources { get; } =
     [
-        new(
-            "FTA IPTV Brasil",
-            "joaoguidugli/FTA-IPTV-Brasil",
+        new("IPTV-org Brasil", "iptv-org/iptv",
+            new Uri("https://iptv-org.github.io/iptv/countries/br.m3u"),
+            PortugueseCatalogFilter.AllEntries, "BR", "Portuguese"),
+        new("IPTV-org Português", "iptv-org/iptv",
+            new Uri("https://iptv-org.github.io/iptv/languages/por.m3u"),
+            PortugueseCatalogFilter.AllEntries, null, "Portuguese"),
+        new("IPTV-org Portugal", "iptv-org/iptv",
+            new Uri("https://iptv-org.github.io/iptv/countries/pt.m3u"),
+            PortugueseCatalogFilter.AllEntries, "PT", "Portuguese"),
+        new("FTA IPTV Brasil", "joaoguidugli/FTA-IPTV-Brasil",
             new Uri("https://raw.githubusercontent.com/joaoguidugli/FTA-IPTV-Brasil/master/playlist.m3u8"),
-            PortugueseCatalogFilter.All,
-            "BR",
-            "Portuguese"),
-        new(
-            "M3UPT Lusofonia",
-            "LITUATUI/M3UPT",
+            PortugueseCatalogFilter.All, "BR", "Portuguese"),
+        new("M3UPT Portugal/Lusofonia", "LITUATUI/M3UPT",
             new Uri("https://raw.githubusercontent.com/LITUATUI/M3UPT/main/M3U/M3UPT.m3u"),
-            PortugueseCatalogFilter.M3uPtTelevision,
-            null,
-            "Portuguese"),
-        new(
-            "Free-TV Brasil/Portugal",
-            "Free-TV/IPTV",
+            PortugueseCatalogFilter.M3uPtTelevision, null, "Portuguese"),
+        new("Free-TV Brasil/Portugal", "Free-TV/IPTV",
             new Uri("https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"),
-            PortugueseCatalogFilter.LusophoneCountryGroup,
-            null,
-            "Portuguese")
+            PortugueseCatalogFilter.LusophoneCountryGroup, null, "Portuguese")
     ];
 }
 
@@ -71,6 +69,7 @@ public static class PortugueseCatalogRules
     {
         return filter switch
         {
+            PortugueseCatalogFilter.AllEntries => true,
             PortugueseCatalogFilter.All => IsPortugueseMetadata(channel),
             PortugueseCatalogFilter.M3uPtTelevision =>
                 string.Equals(channel.Category, "TV", StringComparison.OrdinalIgnoreCase) &&
@@ -93,7 +92,10 @@ public static class PortugueseCatalogRules
         {
             Country = country,
             Language = language,
-            Sources = channel.Sources.Select(s => s with { Provider = $"GitHub · {source.Repository}" }).ToArray()
+            Sources = channel.Sources.Select(s => s with
+            {
+                Provider = $"GitHub · {source.Repository} · {source.Name}"
+            }).ToArray()
         };
     }
 
@@ -101,7 +103,6 @@ public static class PortugueseCatalogRules
     {
         if (IsLusophoneCountry(channel))
             return true;
-
         var language = TextNormalizer.Normalize(channel.Language ?? string.Empty);
         return language.Contains("portugu", StringComparison.Ordinal);
     }
@@ -126,10 +127,8 @@ public static class PortugueseCatalogRules
                normalized.Contains("brasil", StringComparison.Ordinal);
     }
 
-    private static bool IsLusophoneCountry(Channel channel)
-    {
-        return !string.IsNullOrWhiteSpace(channel.Country) && CountryCodes.Contains(channel.Country);
-    }
+    private static bool IsLusophoneCountry(Channel channel) =>
+        !string.IsNullOrWhiteSpace(channel.Country) && CountryCodes.Contains(channel.Country);
 
     private static string? GroupToCountryCode(string? group)
     {
@@ -167,7 +166,7 @@ public sealed class PortugueseCatalogSyncService(HttpClient httpClient)
                 response.EnsureSuccessStatusCode();
                 var text = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                var parsed = M3uParser.Parse(text, $"GitHub · {source.Repository}")
+                var parsed = M3uParser.Parse(text, source.Name)
                     .Where(c => PortugueseCatalogRules.IsIncluded(c, source.Filter))
                     .Select(c => PortugueseCatalogRules.ApplyDefaults(c, source))
                     .Where(c => c.Sources.Any(s => IsSupportedUri(s.Url)))
@@ -183,15 +182,9 @@ public sealed class PortugueseCatalogSyncService(HttpClient httpClient)
         }
 
         return new PortugueseCatalogSyncResult(
-            succeeded,
-            errors.Count,
-            channels.Count,
-            channels,
-            errors);
+            succeeded, errors.Count, channels.Count, channels, errors);
     }
 
-    private static bool IsSupportedUri(Uri uri)
-    {
-        return uri.Scheme is "http" or "https" or "rtsp";
-    }
+    private static bool IsSupportedUri(Uri uri) =>
+        uri.Scheme is "http" or "https" or "rtsp";
 }

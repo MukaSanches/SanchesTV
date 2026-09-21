@@ -1,62 +1,45 @@
-# SanchesTV 3.0
+# SanchesTV 4.0
 
-SanchesTV é uma central de TV/IPTV para Windows com foco em conteúdo em português.
+SanchesTV 4.0 amplia o catálogo automático em português e mantém todos os recursos das versões anteriores, inclusive o Hub Premium oficial da V3.
 
-## V3 — IPTV aberto + Hub Premium
+## Catálogo automático pré-configurado
 
-A versão 3 mantém todo o catálogo aberto/PT-BR da V2 e adiciona um Hub Premium para serviços oficiais de assinatura.
+A V4 já vem com 6 fontes remotas cadastradas e sincroniza no primeiro início:
 
-### Provedores integrados no Hub Premium
+1. IPTV-org — Brasil: `https://iptv-org.github.io/iptv/countries/br.m3u`
+2. IPTV-org — Português: `https://iptv-org.github.io/iptv/languages/por.m3u`
+3. IPTV-org — Portugal: `https://iptv-org.github.io/iptv/countries/pt.m3u`
+4. M3UPT Portugal/Lusofonia: arquivo oficial `M3U/M3UPT.m3u` do repositório `LITUATUI/M3UPT`
+5. FTA IPTV Brasil
+6. Free-TV Brasil/Portugal
 
-- Claro tv+
-- Zapping
-- SKY+
-- Vivo Play
-- Globoplay
+O primeiro início da V4 força nova sincronização. Depois, o catálogo atualiza automaticamente a cada 12 horas.
 
-O Hub Premium mantém um diretório pesquisável de canais e abre o serviço oficial correspondente para autenticação e reprodução protegida.
+## Agregação
 
-### Exemplos de canais presentes no diretório premium
+- EPG ID e nome normalizado reduzem duplicatas.
+- URLs diferentes do mesmo canal são preservadas como fontes alternativas.
+- User-Agent, Referer e Origin presentes nas playlists são preservados.
+- Se uma fonte remota falhar, o banco existente não é apagado.
+- O botão `Atualizar 6 fontes PT/BR` permite atualização manual.
 
-- ESPN, ESPN 2, ESPN 3 e ESPN 4
-- TNT, TNT Séries, TNT Novelas, Warner Channel, Space e Cinemax
-- Discovery Channel, Discovery Home & Health, Discovery Kids, ID, Food Network e HGTV
-- History, History 2, A&E, AXN, Sony Channel, Sony Movies e Paramount Network
-- Cartoon Network, Cartoonito, Nickelodeon, Nick Jr., Tooncast, Adult Swim e TV Rá Tim Bum
-- GloboNews, Multishow, GNT, sportv, Canal Brasil, Canal OFF e Gloob
-- Telecine e Premiere por provedores que os comercializam como adicionais/assinaturas compatíveis
+## Premium
 
-## Política de conteúdo premium
+O Hub Premium continua com acesso oficial a Claro tv+, Zapping, SKY+, Vivo TV e Globoplay. O SanchesTV não incorpora credenciais de terceiros, chaves DRM ou URLs clandestinas de canais pagos.
 
-O SanchesTV não distribui URLs clandestinas de canais pagos, credenciais de terceiros, chaves DRM ou técnicas de bypass. O assinante usa sua própria conta no provedor oficial.
+## Recursos mantidos
 
-## Catálogo aberto mantido da V2
-
-- Sincronização PT/BR automática a cada 12 horas.
-- Fontes selecionadas: FTA-IPTV-Brasil, M3UPT e Free-TV/IPTV.
-- Deduplicação e múltiplas fontes por canal.
-- User-Agent, Referer e Origin de M3U preservados.
-- Filtros Brasil e Portugal/Lusofonia.
-
-## Recursos gerais
-
-- LibVLC com aceleração de hardware.
-- M3U/M3U8 arquivo/URL.
+- Player LibVLC com aceleração de hardware.
+- M3U/M3U8 local ou URL.
 - Xtream do próprio usuário.
 - XMLTV/EPG.
 - Favoritos, Recentes e Minha TV.
-- Pesquisa.
-- Failover.
-- Health-check.
-- PiP.
-- Multiview.
+- Filtros Brasil e Portugal/Lusofonia.
+- Failover e health-check.
+- PiP e Multiview.
 - Gravação.
 - Seek/timeshift quando suportado.
-- Controle remoto via celular.
-- Diagnóstico técnico.
+- Controle remoto pelo celular.
+- Diagnóstico.
 - SQLite.
 - Instalador Windows x64 self-contained.
-
-## Build
-
-O GitHub Actions executa restore, build, testes, publish, self-test, criação do instalador, instalação limpa, self-test instalado, desinstalação, SHA-256 e publicação da release.
