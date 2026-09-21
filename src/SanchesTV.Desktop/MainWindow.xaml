@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 7.0"
+        Title="SanchesTV 7.0.1"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -84,7 +84,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="7.0 • Media Platform" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="7.0.1 • Media Platform" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
