@@ -10,6 +10,7 @@ using LibVLCSharp.Shared;
 using SanchesTV.Core.Catalog;
 using SanchesTV.Core.Health;
 using SanchesTV.Core.Import;
+using SanchesTV.Core.Layout;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
     private bool _isFullscreen;
     private bool _isRecording;
     private bool _catalogSyncRunning;
+    private bool _showCompactChannels = true;
     private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
 
     public MainWindow()
@@ -61,33 +63,79 @@ public partial class MainWindow : Window
 
     private void ApplyResponsiveLayout()
     {
-        if (ActualWidth < 1220)
+        if (!IsLoaded && ActualWidth <= 0)
+            return;
+
+        var layout = UiLayoutPolicy.Resolve(
+            Math.Max(ActualWidth, 520),
+            Math.Max(ActualHeight, 360));
+
+        CompactMenuButton.Visibility = layout.ShowNavigation
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        TitleStatusContainer.Visibility = layout.ShowTitleStatus
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        BrowseSubtitleText.Visibility = layout.ShowBrowseSubtitle
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        BrowseView.Margin = new Thickness(layout.ContentMargin);
+
+        NavigationPanel.Visibility = layout.ShowNavigation
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        NavigationColumn.Width = new GridLength(layout.NavigationWidth);
+
+        SearchColumn.Width = new GridLength(layout.SearchWidth);
+
+        CompactChannelButton.Visibility = layout.SinglePane
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (layout.SinglePane)
         {
-            NavigationColumn.Width = new GridLength(184);
-            ChannelBrowserColumn.Width = new GridLength(318);
-            BrowseGapColumn.Width = new GridLength(10);
-            SearchColumn.Width = new GridLength(250);
-        }
-        else if (ActualWidth < 1460)
-        {
-            NavigationColumn.Width = new GridLength(202);
-            ChannelBrowserColumn.Width = new GridLength(352);
-            BrowseGapColumn.Width = new GridLength(12);
-            SearchColumn.Width = new GridLength(290);
-        }
-        else if (ActualWidth < 1750)
-        {
-            NavigationColumn.Width = new GridLength(216);
-            ChannelBrowserColumn.Width = new GridLength(390);
-            BrowseGapColumn.Width = new GridLength(14);
-            SearchColumn.Width = new GridLength(330);
+            BrowseGapColumn.Width = new GridLength(0);
+
+            if (_showCompactChannels)
+            {
+                ChannelBrowserPanel.Visibility = Visibility.Visible;
+                PlayerPanel.Visibility = Visibility.Collapsed;
+                ChannelBrowserColumn.Width = new GridLength(1, GridUnitType.Star);
+                PlayerColumn.Width = new GridLength(0);
+                CompactChannelButton.Content = "▶ Player";
+                CompactChannelButton.ToolTip = "Mostrar o player";
+            }
+            else
+            {
+                ChannelBrowserPanel.Visibility = Visibility.Collapsed;
+                PlayerPanel.Visibility = Visibility.Visible;
+                ChannelBrowserColumn.Width = new GridLength(0);
+                PlayerColumn.Width = new GridLength(1, GridUnitType.Star);
+                CompactChannelButton.Content = "☰ Canais";
+                CompactChannelButton.ToolTip = "Mostrar a lista de canais";
+            }
         }
         else
         {
-            NavigationColumn.Width = new GridLength(228);
-            ChannelBrowserColumn.Width = new GridLength(430);
-            BrowseGapColumn.Width = new GridLength(16);
-            SearchColumn.Width = new GridLength(380);
+            ChannelBrowserPanel.Visibility = Visibility.Visible;
+            PlayerPanel.Visibility = Visibility.Visible;
+            ChannelBrowserColumn.Width = new GridLength(layout.ChannelWidth);
+            BrowseGapColumn.Width = new GridLength(layout.ContentMargin <= 10 ? 8 : 12);
+            PlayerColumn.Width = new GridLength(1, GridUnitType.Star);
+        }
+
+        if (layout.Mode is UiLayoutMode.Tiny or UiLayoutMode.Compact)
+        {
+            PlayerPrimaryCommands.HorizontalAlignment = HorizontalAlignment.Stretch;
+            PlayerSecondaryCommands.HorizontalAlignment = HorizontalAlignment.Stretch;
+        }
+        else
+        {
+            PlayerPrimaryCommands.HorizontalAlignment = HorizontalAlignment.Left;
+            PlayerSecondaryCommands.HorizontalAlignment = HorizontalAlignment.Left;
         }
     }
 
@@ -95,7 +143,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 5.0...");
+            SetBusy(true, "Inicializando SanchesTV 5.2...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -181,7 +229,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
-                    "Catálogo SanchesTV 5.0",
+                    "Catálogo SanchesTV 5.2",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -326,6 +374,12 @@ public partial class MainWindow : Window
             _currentChannel = channel;
             await _db.RecordPlayedAsync(channel.Id);
 
+            if (UiLayoutPolicy.Resolve(Math.Max(ActualWidth, 520), Math.Max(ActualHeight, 360)).SinglePane)
+            {
+                _showCompactChannels = false;
+                ApplyResponsiveLayout();
+            }
+
             NowPlayingText.Text = channel.Name;
             PlayerInitialText.Text = GetInitial(channel.Name);
             SourceBadgeText.Text = active.Provider.Length > 34 ? active.Provider[..34] + "…" : active.Provider;
@@ -398,12 +452,29 @@ public partial class MainWindow : Window
     private async Task ShowBrowseAsync(string mode, string title, string subtitle)
     {
         _mode = mode;
+        _showCompactChannels = true;
         HomeView.Visibility = Visibility.Collapsed;
         BrowseView.Visibility = Visibility.Visible;
         BrowseTitleText.Text = title;
         BrowseSubtitleText.Text = subtitle;
         await ApplyFilterAsync();
         TitleStatusText.Text = $"{title} • {_visibleItems.Count:N0}";
+    }
+
+    private void CompactMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (CompactMenuButton.ContextMenu is not { } menu)
+            return;
+
+        menu.PlacementTarget = CompactMenuButton;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void ToggleCompactPane_Click(object sender, RoutedEventArgs e)
+    {
+        _showCompactChannels = !_showCompactChannels;
+        ApplyResponsiveLayout();
     }
 
     private async void Home_Click(object sender, RoutedEventArgs e) => await ShowHomeAsync();
@@ -850,7 +921,7 @@ public partial class MainWindow : Window
         }
 
         var text =
-            $"SanchesTV: 5.1.0\n" +
+            $"SanchesTV: 5.2.0\n" +
             $"Interface: Fluent Cinema / Mica\n" +
             $"Engine: {_player.Name}\n" +
             $"Estado: {mp.State}\n" +
