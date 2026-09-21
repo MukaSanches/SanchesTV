@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 6.1.1"
+        Title="SanchesTV 7.0"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -67,6 +67,8 @@
                                 <MenuItem Header="Adicionar Xtream" Click="Xtream_Click"/>
                                 <MenuItem Header="Importar EPG" Click="ImportEpg_Click"/>
                                 <MenuItem Header="Streaming P2P" Click="P2p_Click"/>
+                                <MenuItem Header="Media Lab 7" Click="MediaLab_Click"/>
+                                <MenuItem Header="Guia / gravações" Click="EpgGuide_Click"/>
                                 <MenuItem Header="Atualizar catálogo" Click="SyncPortugueseCatalog_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
@@ -82,7 +84,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="6.1.1 • P2P Resiliente" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="7.0 • Media Platform" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -191,6 +193,10 @@
                         </UniformGrid>
                         <Button Style="{StaticResource ModernButton}" Content="◉ Streaming P2P"
                                 Click="P2p_Click" Margin="5,2" ToolTip="Assistir magnet ou .torrent autorizado sem esperar o download completo"/>
+                        <Button Style="{StaticResource ModernButton}" Content="◈ Media Lab 7"
+                                Click="MediaLab_Click" Margin="5,2" ToolTip="Roteamento, broadcast, diagnóstico, legendas e transcrição local"/>
+                        <Button Style="{StaticResource ModernButton}" Content="▤ Guia / gravações"
+                                Click="EpgGuide_Click" Margin="5,2" ToolTip="Guia de programação e gravação agendada"/>
                         <Button Style="{StaticResource AccentButton}" Content="↻ Atualizar catálogo"
                                 Click="SyncPortugueseCatalog_Click" Margin="5,2"/>
                         <TextBlock x:Name="StatusText" Text="Pronto"
@@ -622,7 +628,11 @@
                                             <Button Style="{StaticResource ModernButton}" Content="📱  Controle"
                                                     MinWidth="92" Click="Remote_Click" ToolTip="Controle remoto pelo celular"/>
                                             <Button Style="{StaticResource ModernButton}" Content="⚙  Áudio/Vídeo"
-                                                    MinWidth="104" Click="AudioVideo_Click" ToolTip="Perfis de imagem, HDR e WASAPI"/>
+                                                    MinWidth="104" Click="AudioVideo_Click" ToolTip="HDR, deinterlace, interpolação, áudio e legendas"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="▤  Guia"
+                                                    MinWidth="70" Click="EpgGuide_Click" ToolTip="Guia de 14 dias e gravações agendadas"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="◈  Media Lab"
+                                                    MinWidth="92" Click="MediaLab_Click" ToolTip="MediaMTX, TSDuck, FFprobe, CCExtractor e Whisper"/>
                                             <Button Style="{StaticResource ModernButton}" Content="ⓘ  Diagnóstico"
                                                     MinWidth="100" Click="Diagnostics_Click" ToolTip="Informações técnicas"/>
                                         </WrapPanel>
