@@ -65,8 +65,8 @@ public static class PremiumCatalog
             "Vivo Play",
             "https://vivo.com.br/para-voce/produtos-e-servicos/para-casa/tv",
             "https://vivo.com.br/para-voce/produtos-e-servicos/para-casa/tv",
-            "Pacotes Inicial e Estendido",
-            "TV online da Vivo com canais por assinatura, abertos e adicionais conforme o plano.",
+            "120+ canais nos pacotes de TV por assinatura; até 140 no Completo",
+            "Vivo TV (antigo Vivo Play) com TV online e TV por assinatura, canais ao vivo e adicionais conforme o plano.",
             [
                 "Discovery Channel", "History", "History 2", "National Geographic",
                 "ESPN", "ESPN 2", "ESPN 3", "ESPN 4",
@@ -86,12 +86,14 @@ public static class PremiumCatalog
             "Globoplay",
             "https://globoplay.globo.com/",
             "https://globoplay.globo.com/catalogo/",
-            "Canais Globo + adicionais conforme assinatura",
-            "Acesso oficial aos canais e adicionais disponíveis na assinatura Globoplay.",
+            "17 canais pagos no plano Premium, além de TV Globo e Futura",
+            "Acesso oficial aos canais Globo e produtos adicionais disponíveis conforme a assinatura.",
             [
-                "TV Globo", "Multishow", "GloboNews", "sportv", "GNT",
-                "Globoplay Novelas", "Gloob", "Canal Brasil", "Canal OFF",
-                "Modo Viagem", "Premiere"
+                "TV Globo", "Futura", "GNT", "Multishow", "Globoplay Novelas",
+                "BIS", "Canal OFF", "Gloob", "Gloobinho", "GloboNews",
+                "Modo Viagem", "Canal Brasil", "Megapix", "Universal",
+                "Studio Universal", "USA Network", "sportv", "sportv 2", "sportv 3",
+                "Telecine", "Premiere", "Combate"
             ])
     ];
 
