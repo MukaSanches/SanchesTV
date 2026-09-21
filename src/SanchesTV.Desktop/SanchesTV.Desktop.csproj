@@ -25,6 +25,7 @@
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="OpenTelemetry" Version="1.19.0" />
   </ItemGroup>
   <ItemGroup>
