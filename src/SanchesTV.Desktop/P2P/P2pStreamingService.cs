@@ -1,6 +1,5 @@
 using System.Net.Http;
 using System.IO;
-using System.IO;
 using System.Collections.Immutable;
 using System.Net;
 using System.Net.Sockets;
@@ -68,7 +67,8 @@ public sealed class P2pStreamingService : IAsyncDisposable
         string magnetText,
         CancellationToken cancellationToken = default)
     {
-        if (!MagnetLink.TryParse(magnetText?.Trim(), out var magnet) || magnet is null)
+        var value = magnetText?.Trim();
+        if (string.IsNullOrWhiteSpace(value) || !MagnetLink.TryParse(value, out var magnet) || magnet is null)
             throw new ArgumentException("Magnet inválido.", nameof(magnetText));
 
         return await LoadAsync(
