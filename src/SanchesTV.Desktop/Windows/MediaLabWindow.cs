@@ -7,9 +7,6 @@ using SanchesTV.Desktop.Tools;
 using SanchesTV.Desktop.Diagnostics;
 using SanchesTV.Desktop.AI;
 using SanchesTV.Desktop.Update;
-using Velopack;
-using SanchesTV.Desktop.AI;
-using SanchesTV.Desktop.Update;
 
 namespace SanchesTV.Desktop.Windows;
 
@@ -18,6 +15,7 @@ public sealed class MediaLabWindow : Window
     private readonly MediaToolsService _tools;
     private readonly MediaRouterService _router;
     private readonly Func<ChannelSource?> _sourceProvider;
+    private readonly HardwareMonitorService _hardware;
     private readonly DlnaCastService _dlna = new();
     private readonly AdvancedMediaProcessor _processor;
     private readonly OnnxModelInspector _onnx = new();
@@ -48,7 +46,6 @@ public sealed class MediaLabWindow : Window
         _router = router;
         _sourceProvider = sourceProvider;
         _hardware = hardware;
-        _processor = new AdvancedMediaProcessor(tools);
         _processor = new AdvancedMediaProcessor(tools);
 
         Title = "SanchesTV 7 — Media Lab";
@@ -481,8 +478,9 @@ public sealed class MediaLabWindow : Window
         try
         {
             _status.Text = "Verificando runtimes...";
-            RuntimeStatus = await _tools.GetVersionSummaryAsync();
-            _status.Text = "Runtimes verificados.";
+            RuntimeStatus = await _tools.GetVersionSummaryAsync() +
+                "\n\nHARDWARE\n" + _hardware.GetSummary();
+            _status.Text = "Runtimes e hardware verificados.";
             RefreshBindings();
         }
         catch (Exception ex)
