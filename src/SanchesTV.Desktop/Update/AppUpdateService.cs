@@ -26,7 +26,8 @@ public sealed class AppUpdateService
         if (!_manager.IsInstalled)
             return null;
 
-        return await _manager.CheckForUpdatesAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return await _manager.CheckForUpdatesAsync();
     }
 
     public async Task DownloadAsync(
