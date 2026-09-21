@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 5.1"
+        Title="SanchesTV 5.2"
         Width="1540" Height="920"
-        MinWidth="1120" MinHeight="700"
+        MinWidth="520" MinHeight="360"
         WindowStyle="None"
         WindowState="Maximized"
         ResizeMode="CanResize"
@@ -40,7 +40,35 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+                    <Button x:Name="CompactMenuButton"
+                            Visibility="Collapsed"
+                            Style="{StaticResource CaptionButton}"
+                            Content="&#xE700;"
+                            ToolTip="Menu"
+                            Click="CompactMenu_Click"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Início" Click="Home_Click"/>
+                                <MenuItem Header="Ao vivo" Click="All_Click"/>
+                                <MenuItem Header="Filmes" Click="Movies_Click"/>
+                                <MenuItem Header="Brasil" Click="Brazil_Click"/>
+                                <MenuItem Header="Português" Click="Lusophone_Click"/>
+                                <MenuItem Header="Premium oficial" Click="Premium_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Favoritos" Click="Favorites_Click"/>
+                                <MenuItem Header="Minha TV" Click="MyTv_Click"/>
+                                <MenuItem Header="Recentes" Click="Recent_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Importar M3U" Click="ImportFile_Click"/>
+                                <MenuItem Header="Adicionar URL M3U" Click="ImportUrl_Click"/>
+                                <MenuItem Header="Adicionar Xtream" Click="Xtream_Click"/>
+                                <MenuItem Header="Importar EPG" Click="ImportEpg_Click"/>
+                                <MenuItem Header="Atualizar catálogo" Click="SyncPortugueseCatalog_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                     <Grid Width="32" Height="32">
                         <Border Background="{StaticResource BrandGradient}" CornerRadius="10"/>
                         <TextBlock Text="S" FontSize="19" FontWeight="Black"
@@ -52,11 +80,11 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="5.1 • Fluent Cinema" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="5.2 • Responsive Cinema" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                <Border x:Name="TitleStatusContainer" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Background="#18FFFFFF" CornerRadius="16" Padding="12,4">
                     <TextBlock x:Name="TitleStatusText" Text="Central de TV em Português"
                                Foreground="#B8C2D2" FontSize="11"/>
@@ -79,14 +107,10 @@
             <!-- Left navigation -->
             <Border x:Name="NavigationPanel" Grid.Column="0"
                     Background="#A811141B" BorderBrush="#20FFFFFF" BorderThickness="0,0,1,0">
-                <Grid Margin="10,16,10,12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              PanningMode="VerticalOnly">
+                    <StackPanel Margin="10,14,10,14">
                         <TextBlock Text="NAVEGAR" Foreground="#6F7C90" FontSize="10"
                                    FontWeight="SemiBold" Margin="14,0,0,8"/>
                         <Button Style="{StaticResource NavButton}" Click="Home_Click">
@@ -148,9 +172,9 @@
                                 <TextBlock Text="Recentes"/>
                             </StackPanel>
                         </Button>
-                    </StackPanel>
 
-                    <StackPanel Grid.Row="2">
+                        <Border Height="1" Background="#20FFFFFF" Margin="12,12"/>
+
                         <TextBlock Text="FONTES E DADOS" Foreground="#6F7C90" FontSize="10"
                                    FontWeight="SemiBold" Margin="14,0,0,6"/>
                         <UniformGrid Columns="2" Margin="2,0,2,4">
@@ -169,7 +193,7 @@
                                    Foreground="#7F8B9F" TextWrapping="Wrap"
                                    FontSize="10" Margin="10,6,10,0"/>
                     </StackPanel>
-                </Grid>
+                </ScrollViewer>
             </Border>
 
             <Grid Grid.Column="1">
@@ -354,23 +378,32 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition x:Name="SearchColumn" Width="330"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock x:Name="BrowseTitleText" Text="Ao vivo"
-                                       FontSize="30" FontWeight="Bold"/>
-                            <TextBlock x:Name="BrowseSubtitleText"
-                                       Text="Escolha um canal e comece a assistir."
-                                       Foreground="#8F9BAD" Margin="0,4,0,0"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="CompactChannelButton"
+                                    Visibility="Collapsed"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="☰ Canais"
+                                    Margin="0,0,10,0"
+                                    Click="ToggleCompactPane_Click"
+                                    ToolTip="Alternar entre lista de canais e player"/>
+                            <StackPanel>
+                                <TextBlock x:Name="BrowseTitleText" Text="Ao vivo"
+                                           FontSize="30" FontWeight="Bold"/>
+                                <TextBlock x:Name="BrowseSubtitleText"
+                                           Text="Escolha um canal e comece a assistir."
+                                           Foreground="#8F9BAD" Margin="0,4,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                         <TextBox x:Name="SearchBox" Grid.Column="1" Height="42"
                                  TextChanged="SearchBox_TextChanged"
                                  ToolTip="Buscar canal, categoria, país, estado ou região"/>
                     </Grid>
 
-                    <Grid Grid.Row="1">
+                    <Grid x:Name="BrowseContentGrid" Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="ChannelBrowserColumn" Width="390"/>
                             <ColumnDefinition x:Name="BrowseGapColumn" Width="14"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition x:Name="PlayerColumn" Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <Border x:Name="ChannelBrowserPanel" Grid.Column="0" Style="{StaticResource CardBorder}" Padding="8">
@@ -467,7 +500,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Grid.Column="2" Style="{StaticResource CardBorder}" ClipToBounds="True">
+                        <Border x:Name="PlayerPanel" Grid.Column="2" Style="{StaticResource CardBorder}" ClipToBounds="True">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*"/>
@@ -536,51 +569,41 @@
                                 </Grid>
 
                                 <Border x:Name="PlayerCommandBar" Grid.Row="1"
-                                        Background="#F0161A22" Padding="8"
+                                        Background="#F0161A22" Padding="7"
                                         BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-
-                                        <Grid Grid.Row="0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="150"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <StackPanel Orientation="Horizontal">
-                                                <Button Style="{StaticResource ModernButton}" Content="⏮" Width="40"
-                                                        ToolTip="Canal anterior" Click="Previous_Click"/>
-                                                <Button x:Name="PlayPauseButton" Style="{StaticResource AccentButton}" Content="⏯"
-                                                        Width="46" ToolTip="Reproduzir/Pausar" Click="PlayPause_Click"/>
-                                                <Button Style="{StaticResource ModernButton}" Content="⏭" Width="40"
-                                                        ToolTip="Próximo canal" Click="Next_Click"/>
-                                                <Button Style="{StaticResource ModernButton}" Content="⏹" Width="40"
-                                                        ToolTip="Parar" Click="Stop_Click"/>
-                                                <Button x:Name="MuteButton" Style="{StaticResource ModernButton}" Content="🔊" Width="40"
-                                                        ToolTip="Mudo" Click="Mute_Click"/>
-                                            </StackPanel>
-
-                                            <Slider x:Name="VolumeSlider" Grid.Column="1" Minimum="0" Maximum="100"
-                                                    Value="80" Margin="8,0"
-                                                    VerticalAlignment="Center"
-                                                    ToolTip="Volume"
-                                                    ValueChanged="VolumeSlider_ValueChanged"/>
-
-                                            <Button x:Name="FullscreenButton" Grid.Column="3"
+                                    <StackPanel>
+                                        <WrapPanel x:Name="PlayerPrimaryCommands" HorizontalAlignment="Left">
+                                            <Button Style="{StaticResource ModernButton}" Content="⏮" MinWidth="40"
+                                                    ToolTip="Canal anterior" Click="Previous_Click"/>
+                                            <Button x:Name="PlayPauseButton" Style="{StaticResource AccentButton}" Content="⏯"
+                                                    MinWidth="46" ToolTip="Reproduzir/Pausar" Click="PlayPause_Click"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="⏭" MinWidth="40"
+                                                    ToolTip="Próximo canal" Click="Next_Click"/>
+                                            <Button Style="{StaticResource ModernButton}" Content="⏹" MinWidth="40"
+                                                    ToolTip="Parar" Click="Stop_Click"/>
+                                            <Button x:Name="MuteButton" Style="{StaticResource ModernButton}" Content="🔊" MinWidth="40"
+                                                    ToolTip="Mudo" Click="Mute_Click"/>
+                                            <Border Background="#18FFFFFF" CornerRadius="9"
+                                                    Margin="3" Padding="8,4" MinWidth="140">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Vol." Foreground="#9AA6B8"
+                                                               VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                    <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100"
+                                                            Value="80" Width="95" VerticalAlignment="Center"
+                                                            ToolTip="Volume"
+                                                            ValueChanged="VolumeSlider_ValueChanged"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Button x:Name="FullscreenButton"
                                                     Style="{StaticResource AccentButton}"
                                                     Content="⛶  Tela cheia  F11"
-                                                    MinWidth="132" Height="38"
+                                                    MinWidth="132"
                                                     Click="Fullscreen_Click"
                                                     ToolTip="Tela cheia — F11 ou duplo clique no vídeo"/>
-                                        </Grid>
+                                        </WrapPanel>
 
-                                        <WrapPanel x:Name="PlayerSecondaryCommands" Grid.Row="1"
-                                                   Margin="0,5,0,0" HorizontalAlignment="Left">
+                                        <WrapPanel x:Name="PlayerSecondaryCommands"
+                                                   Margin="0,3,0,0" HorizontalAlignment="Left">
                                             <Button Style="{StaticResource ModernButton}" Content="−30s"
                                                     MinWidth="58" Click="Rewind_Click" ToolTip="Voltar 30 segundos"/>
                                             <Button Style="{StaticResource ModernButton}" Content="LIVE"
@@ -596,7 +619,7 @@
                                             <Button Style="{StaticResource ModernButton}" Content="ⓘ  Diagnóstico"
                                                     MinWidth="100" Click="Diagnostics_Click" ToolTip="Informações técnicas"/>
                                         </WrapPanel>
-                                    </Grid>
+                                    </StackPanel>
                                 </Border>
                             </Grid>
                         </Border>
