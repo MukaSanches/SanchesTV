@@ -7,6 +7,7 @@ public enum PortugueseCatalogFilter
 {
     All,
     AllEntries,
+    BrazilPublicOnly,
     M3uPtTelevision,
     LusophoneCountryGroup
 }
@@ -17,7 +18,8 @@ public sealed record PortugueseCatalogSource(
     Uri PlaylistUrl,
     PortugueseCatalogFilter Filter,
     string? DefaultCountry = null,
-    string? DefaultLanguage = "Portuguese");
+    string? DefaultLanguage = "Portuguese",
+    string? DefaultCategory = null);
 
 public sealed record PortugueseCatalogSyncResult(
     int DownloadedSources,
@@ -39,6 +41,12 @@ public static class PortugueseCatalogRegistry
         new("IPTV-org Portugal", "iptv-org/iptv",
             new Uri("https://iptv-org.github.io/iptv/countries/pt.m3u"),
             PortugueseCatalogFilter.AllEntries, "PT", "Portuguese"),
+        new("IPTV-org Filmes", "iptv-org/iptv",
+            new Uri("https://iptv-org.github.io/iptv/categories/movies.m3u"),
+            PortugueseCatalogFilter.AllEntries, null, null, "Movies"),
+        new("Brasil Full — abertos/públicos", "iptv-com/iptv",
+            new Uri("https://github.com/iptv-com/iptv/raw/refs/heads/main/lists/brazil.m3u"),
+            PortugueseCatalogFilter.BrazilPublicOnly, "BR", "Portuguese"),
         new("FTA IPTV Brasil", "joaoguidugli/FTA-IPTV-Brasil",
             new Uri("https://raw.githubusercontent.com/joaoguidugli/FTA-IPTV-Brasil/master/playlist.m3u8"),
             PortugueseCatalogFilter.All, "BR", "Portuguese"),
@@ -70,6 +78,7 @@ public static class PortugueseCatalogRules
         return filter switch
         {
             PortugueseCatalogFilter.AllEntries => true,
+            PortugueseCatalogFilter.BrazilPublicOnly => IsBrazilPublicChannel(channel),
             PortugueseCatalogFilter.All => IsPortugueseMetadata(channel),
             PortugueseCatalogFilter.M3uPtTelevision =>
                 string.Equals(channel.Category, "TV", StringComparison.OrdinalIgnoreCase) &&
@@ -92,11 +101,30 @@ public static class PortugueseCatalogRules
         {
             Country = country,
             Language = language,
+            Category = source.DefaultCategory ?? channel.Category,
             Sources = channel.Sources.Select(s => s with
             {
                 Provider = $"GitHub · {source.Repository} · {source.Name}"
             }).ToArray()
         };
+    }
+
+
+    private static readonly string[] PremiumNameFragments =
+    [
+        "espn", "sportv", "telecine", "hbo", "tnt", "warner", "discovery",
+        "history", "a&e", "axn", "sony channel", "sony movies", "paramount",
+        "nickelodeon", "nick jr", "cartoon network", "cartoonito", "globonews",
+        "gnt", "multishow", "premiere", "combate", "universal tv",
+        "studio universal", "megapix", "cinemax", "tlc", "food network",
+        "hgtv", "lifetime", "adult swim", "mtv live"
+    ];
+
+    private static bool IsBrazilPublicChannel(Channel channel)
+    {
+        var name = TextNormalizer.Normalize(channel.Name);
+        return !PremiumNameFragments.Any(fragment =>
+            name.Contains(TextNormalizer.Normalize(fragment), StringComparison.Ordinal));
     }
 
     private static bool IsPortugueseMetadata(Channel channel)
