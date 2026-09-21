@@ -114,7 +114,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildRouterTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Transmitir para outros dispositivos"));
+        panel.Children.Add(SectionTitle("Transmitir para outros dispositivos"));
         panel.Children.Add(Description(
             "O canal atual é publicado localmente pelo FFmpeg no MediaMTX. MediaMTX disponibiliza RTSP, HLS e WebRTC. Por padrão fica restrito ao próprio PC."));
 
@@ -162,7 +162,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildCastTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("DLNA / UPnP"));
+        panel.Children.Add(SectionTitle("DLNA / UPnP"));
         panel.Children.Add(Description(
             "Descobre televisores e Media Renderers na rede local. O SanchesTV cria um HLS acessível na LAN e envia a URL ao dispositivo selecionado."));
 
@@ -249,7 +249,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildProcessingTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Processamento avançado"));
+        panel.Children.Add(SectionTitle("Processamento avançado"));
         panel.Children.Add(Description(
             "Usa os filtros realmente presentes no FFmpeg empacotado: EBU R128/loudnorm, SoXR, zscale/zimg, BWDIF e VMAF quando disponíveis."));
 
@@ -358,7 +358,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildAmbientTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Ambilight / Hyperion.NG"));
+        panel.Children.Add(SectionTitle("Ambilight / Hyperion.NG"));
         panel.Children.Add(Description(
             "Inicia o Hyperion.NG empacotado com a SanchesTV 7. O hardware de LEDs, WLED e captura deve ser configurado no painel local do Hyperion."));
 
@@ -382,7 +382,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildAiTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("IA local / ONNX"));
+        panel.Children.Add(SectionTitle("IA local / ONNX"));
         panel.Children.Add(Description(
             "ONNX Runtime permite carregar modelos locais sem enviar conteúdo para a nuvem. Esta tela valida modelos e mostra entradas/saídas antes de eles serem usados em módulos especializados."));
 
@@ -422,7 +422,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildUpdateTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Atualizações"));
+        panel.Children.Add(SectionTitle("Atualizações"));
         panel.Children.Add(Description(
             "Velopack oferece atualização incremental quando o aplicativo foi instalado pelo instalador Velopack. A release tradicional continua disponível como recuperação."));
 
@@ -517,7 +517,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildAnalysisTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Diagnóstico profissional"));
+        panel.Children.Add(SectionTitle("Diagnóstico profissional"));
         panel.Children.Add(Description(
             "FFprobe analisa a fonte atual ou arquivos locais. TSDuck faz inspeção profunda de MPEG Transport Stream."));
 
@@ -537,7 +537,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildSubtitleTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Legendas e fala"));
+        panel.Children.Add(SectionTitle("Legendas e fala"));
         panel.Children.Add(Description(
             "CCExtractor extrai closed captions existentes. whisper.cpp cria legenda SRT em PT-BR totalmente offline usando o modelo incluído."));
 
@@ -561,7 +561,7 @@ public sealed class MediaLabWindow : Window
     private TabItem BuildRuntimeTab()
     {
         var panel = Panel();
-        panel.Children.Add(Title("Runtimes e integridade"));
+        panel.Children.Add(SectionTitle("Runtimes e integridade"));
         panel.Children.Add(Description(
             "Mostra os componentes avançados empacotados com a SanchesTV 7. O pipeline verifica os arquivos antes de gerar o instalador."));
 
@@ -826,7 +826,7 @@ public sealed class MediaLabWindow : Window
         Content = child
     };
 
-    private static TextBlock Title(string text) => new()
+    private static TextBlock SectionTitle(string text) => new()
     {
         Text = text,
         FontSize = 21,
