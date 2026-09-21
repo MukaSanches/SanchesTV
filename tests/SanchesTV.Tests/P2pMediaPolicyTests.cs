@@ -1,3 +1,4 @@
+using Xunit;
 using SanchesTV.Core.P2P;
 
 namespace SanchesTV.Tests;
