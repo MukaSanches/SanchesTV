@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly VlcPlaybackEngine _vlc = new();
     private readonly MpvPlaybackEngine _mpv = new();
     private readonly FfmpegRecorder _recorder = new();
+    private readonly TimeshiftService _timeshift = new();
     private readonly WindowsAudioService _audio = new();
     private readonly P2pStreamingService _p2p = new();
     private readonly MediaToolsService _mediaTools = new();
@@ -58,6 +59,7 @@ public partial class MainWindow : Window
     private bool _muted;
     private PlaybackBackend _activeBackend = PlaybackBackend.Vlc;
     private ChannelSource? _activeSource;
+    private ChannelSource? _timeshiftOriginSource;
     private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
 
     public MainWindow()
@@ -1078,6 +1080,102 @@ public partial class MainWindow : Window
         await _vlc.SetVolumeAsync(e.NewValue);
     }
 
+    private async void Timeshift_Click(object sender, RoutedEventArgs e)
+    {
+        if (_timeshift.IsRunning)
+        {
+            try
+            {
+                SetBusy(true, "Voltando à fonte ao vivo...");
+                await _timeshift.StopAsync();
+
+                if (_timeshiftOriginSource is { } origin)
+                {
+                    _activeSource = origin;
+                    if (await EnsureMpvReadyAsync())
+                    {
+                        await _vlc.StopAsync();
+                        SetVideoBackend(PlaybackBackend.Mpv);
+                        _activeSource = await _mpv.OpenWithFallbackAsync([origin]);
+                        _activeBackend = PlaybackBackend.Mpv;
+                    }
+                    else
+                    {
+                        SetVideoBackend(PlaybackBackend.Vlc);
+                        _activeSource = await _vlc.OpenWithFallbackAsync([origin]);
+                        _activeBackend = PlaybackBackend.Vlc;
+                    }
+                }
+
+                _timeshiftOriginSource = null;
+                StatusText.Text = "Timeshift encerrado • fonte ao vivo";
+                TimeshiftButton.Content = "⏱ Timeshift";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Timeshift",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+            return;
+        }
+
+        if (_activeSource is null)
+        {
+            StatusText.Text = "Abra um canal antes de iniciar o timeshift.";
+            return;
+        }
+
+        if (string.Equals(_activeSource.Provider, "P2P", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "P2P já possui seek próprio; timeshift adicional não é necessário.";
+            return;
+        }
+
+        try
+        {
+            SetBusy(true, "Criando buffer de timeshift...");
+            _timeshiftOriginSource = _activeSource;
+            var uri = await _timeshift.StartAsync(_activeSource);
+            var local = new ChannelSource(
+                Guid.NewGuid(),
+                "Timeshift",
+                uri,
+                0);
+
+            if (await EnsureMpvReadyAsync())
+            {
+                await _vlc.StopAsync();
+                SetVideoBackend(PlaybackBackend.Mpv);
+                _activeSource = await _mpv.OpenWithFallbackAsync([local]);
+                _activeBackend = PlaybackBackend.Mpv;
+            }
+            else
+            {
+                SetVideoBackend(PlaybackBackend.Vlc);
+                _activeSource = await _vlc.OpenWithFallbackAsync([local]);
+                _activeBackend = PlaybackBackend.Vlc;
+            }
+
+            StatusText.Text = "Timeshift ativo • pause, volte e use LIVE para retornar ao ponto mais recente";
+            TimeshiftButton.Content = "⏱ Sair do timeshift";
+        }
+        catch (Exception ex)
+        {
+            _timeshiftOriginSource = null;
+            await _timeshift.StopAsync();
+            MessageBox.Show(this, ex.Message, "Timeshift",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
     private async void Rewind_Click(object sender, RoutedEventArgs e)
     {
         if (_activeBackend == PlaybackBackend.Mpv && _mpv.IsAvailable)
@@ -1394,6 +1492,7 @@ public partial class MainWindow : Window
             await _remote.DisposeAsync();
 
         _recorder.Dispose();
+        await _timeshift.DisposeAsync();
         _hardware.Dispose();
         await _mediaRouter.DisposeAsync();
         await _recordingScheduler.DisposeAsync();
