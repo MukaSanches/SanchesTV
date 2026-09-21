@@ -2,12 +2,14 @@ using System.Windows;
 using System.Windows.Controls;
 using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.Playback;
+using SanchesTV.Desktop.Diagnostics;
 
 namespace SanchesTV.Desktop.Windows;
 
 public sealed class AudioVideoSettingsWindow : Window
 {
     private readonly MpvPlaybackEngine _mpv;
+    private readonly HardwareMonitorService _hardware;
     private readonly ComboBox _profile = new();
     private readonly ComboBox _deinterlace = new();
     private readonly ComboBox _toneMapping = new();
@@ -20,9 +22,13 @@ public sealed class AudioVideoSettingsWindow : Window
     private readonly TextBox _subtitleDelay = new();
     private readonly TextBlock _audioInfo = new();
 
-    public AudioVideoSettingsWindow(MpvPlaybackEngine mpv, WindowsAudioService audio)
+    public AudioVideoSettingsWindow(
+        MpvPlaybackEngine mpv,
+        WindowsAudioService audio,
+        HardwareMonitorService hardware)
     {
         _mpv = mpv;
+        _hardware = hardware;
 
         Title = "SanchesTV 7 — Áudio, Vídeo e Legendas";
         Width = 720;
@@ -92,6 +98,7 @@ public sealed class AudioVideoSettingsWindow : Window
         trackActions.Children.Add(Button("Próxima legenda", async (_, _) => await RunLiveAsync(_mpv.CycleSubtitleTrackAsync)));
         trackActions.Children.Add(Button("Mostrar/ocultar legenda", async (_, _) => await RunLiveAsync(_mpv.ToggleSubtitlesAsync)));
         trackActions.Children.Add(Button("Capturar frame", Screenshot_Click));
+        trackActions.Children.Add(Button("Auto por hardware", AutoHardware_Click));
         root.Children.Add(trackActions);
 
         root.Children.Add(Section("Saída do Windows"));
@@ -156,6 +163,26 @@ public sealed class AudioVideoSettingsWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Áudio/Vídeo",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void AutoHardware_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var recommended = _hardware.RecommendPlaybackProfile();
+            _profile.SelectedItem = recommended;
+            await _mpv.SetProfileAsync(recommended);
+            MessageBox.Show(this,
+                "Perfil aplicado: " + recommended + "\n\n" + _hardware.GetSummary(),
+                "Perfil automático",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Hardware",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
