@@ -965,6 +965,7 @@ public partial class MainWindow : Window
             }
 
             TitleBar.Visibility = Visibility.Collapsed;
+            TitleBarRow.Height = new GridLength(0);
             NavigationPanel.Visibility = Visibility.Collapsed;
             NavigationColumn.Width = new GridLength(0);
 
@@ -972,6 +973,8 @@ public partial class MainWindow : Window
             ChannelBrowserPanel.Visibility = Visibility.Collapsed;
             ChannelBrowserColumn.Width = new GridLength(0);
             BrowseGapColumn.Width = new GridLength(0);
+            PlayerPanel.Visibility = Visibility.Visible;
+            PlayerColumn.Width = new GridLength(1, GridUnitType.Star);
             BrowseView.Margin = new Thickness(0);
 
             PlayerSecondaryCommands.Visibility = Visibility.Collapsed;
@@ -990,6 +993,7 @@ public partial class MainWindow : Window
             Topmost = false;
             ResizeMode = ResizeMode.CanResize;
             TitleBar.Visibility = Visibility.Visible;
+            TitleBarRow.Height = new GridLength(52);
             NavigationPanel.Visibility = Visibility.Visible;
 
             BrowseHeader.Visibility = Visibility.Visible;
