@@ -49,7 +49,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 2.0...");
+            SetBusy(true, "Inicializando SanchesTV 3.0...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -127,7 +127,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas portuguesas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal atual no SanchesTV: {_allChannels.Count:N0}{errors}",
-                    "Catálogo Português — SanchesTV 2.0",
+                    "Catálogo Português — SanchesTV 3.0",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -245,6 +245,11 @@ public partial class MainWindow : Window
     }
 
     private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) => await SyncPortugueseCatalogAsync(true);
+
+    private void Premium_Click(object sender, RoutedEventArgs e)
+    {
+        new PremiumHubWindow { Owner = this }.Show();
+    }
 
     private async void ImportFile_Click(object sender, RoutedEventArgs e)
     {
@@ -588,7 +593,7 @@ public partial class MainWindow : Window
         }
 
         var text =
-            $"SanchesTV: 2.0.0\n" +
+            $"SanchesTV: 3.0.0\n" +
             $"Engine: {_player.Name}\n" +
             $"Estado: {mp.State}\n" +
             $"Provider: {active?.Provider ?? "(nenhum)"}\n" +
