@@ -94,7 +94,10 @@ public sealed class P2pStreamingService : IAsyncDisposable
             async (engine, savePath) => await engine.AddStreamingAsync(
                 torrent,
                 savePath,
-                new TorrentSettings() with { CreateContainingDirectory = true }),
+                new TorrentSettingsBuilder
+                {
+                    CreateContainingDirectory = true
+                }.ToSettings()),
             cancellationToken);
     }
 
