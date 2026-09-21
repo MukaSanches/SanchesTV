@@ -16,6 +16,7 @@ using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
+using SanchesTV.Desktop.P2P;
 using SanchesTV.Desktop.Remote;
 using SanchesTV.Desktop.Windows;
 
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
     private readonly MpvPlaybackEngine _mpv = new();
     private readonly FfmpegRecorder _recorder = new();
     private readonly WindowsAudioService _audio = new();
+    private readonly P2pStreamingService _p2p = new();
     private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RemoteControlServer? _remote;
     private IReadOnlyList<Channel> _allChannels = Array.Empty<Channel>();
@@ -611,6 +613,57 @@ public partial class MainWindow : Window
     private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) =>
         await SyncCatalogAsync(true);
 
+    private void P2p_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new P2pStreamingWindow(_p2p) { Owner = this };
+        window.PlayRequested += async (_, uri) => await PlayP2pUriAsync(uri);
+        window.Show();
+    }
+
+    private async Task PlayP2pUriAsync(Uri uri)
+    {
+        try
+        {
+            SetBusy(true, "Preparando buffer P2P...");
+            var source = new ChannelSource(
+                Guid.NewGuid(),
+                "P2P local",
+                uri,
+                0);
+
+            if (await EnsureMpvReadyAsync())
+            {
+                await _vlc.StopAsync();
+                SetVideoBackend(PlaybackBackend.Mpv);
+                _activeSource = await _mpv.OpenWithFallbackAsync([source]);
+                _activeBackend = PlaybackBackend.Mpv;
+            }
+            else
+            {
+                SetVideoBackend(PlaybackBackend.Vlc);
+                _activeSource = await _vlc.OpenWithFallbackAsync([source]);
+                _activeBackend = PlaybackBackend.Vlc;
+            }
+
+            HomeView.Visibility = Visibility.Collapsed;
+            BrowseView.Visibility = Visibility.Visible;
+            PlayerPanel.Visibility = Visibility.Visible;
+            PlayerChannelText.Text = "Streaming P2P";
+            NowEpgText.Text = "Reprodução progressiva • cache local • seek HTTP Range";
+            NextEpgText.Text = "Fonte fornecida pelo usuário";
+            StatusText.Text = $"P2P • {(_activeBackend == PlaybackBackend.Mpv ? "libmpv" : "LibVLC")}";
+            TitleStatusText.Text = "Streaming P2P";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Streaming P2P", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
     private async void HomeList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is ListBox list && list.SelectedItem is ChannelListItem item)
@@ -1084,7 +1137,7 @@ public partial class MainWindow : Window
 
         var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 6.0.0\n" +
+            $"SanchesTV: 6.1.0\n" +
             $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
             $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
@@ -1095,7 +1148,7 @@ public partial class MainWindow : Window
             $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";
 
-        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6.1", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -1229,6 +1282,7 @@ public partial class MainWindow : Window
             await _remote.DisposeAsync();
 
         _recorder.Dispose();
+        await _p2p.DisposeAsync();
         await _mpv.DisposeAsync();
         await _vlc.DisposeAsync();
         _http.Dispose();
