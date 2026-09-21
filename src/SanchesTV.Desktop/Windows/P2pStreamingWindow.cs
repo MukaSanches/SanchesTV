@@ -24,8 +24,12 @@ public sealed class P2pStreamingWindow : Window
     private readonly CheckBox _portForwarding = new();
     private readonly CheckBox _prebuffer = new();
     private readonly ComboBox _cacheLimit = new();
+    private readonly ComboBox _bufferSize = new();
+    private readonly ComboBox _stallRecovery = new();
     private readonly TextBox _uploadLimit = new();
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly CheckBox _autoRecovery = new();
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _maintenanceRunning;
 
     public P2pStreamingWindow(
         P2pStreamingService service,
@@ -59,7 +63,7 @@ public sealed class P2pStreamingWindow : Window
         Closed += (_, _) => _timer.Stop();
         DragOver += OnDragOver;
         Drop += OnDrop;
-        _timer.Tick += (_, _) => RefreshStats();
+        _timer.Tick += MaintenanceTick;
     }
 
     private UIElement BuildUi()
@@ -147,6 +151,24 @@ public sealed class P2pStreamingWindow : Window
         settings.Children.Add(_cacheLimit);
         settings.Children.Add(MakeLabel("GB"));
 
+        settings.Children.Add(MakeLabel("Buffer inicial:"));
+        _bufferSize.ItemsSource = new[] { 8, 16, 24, 32, 64, 96 };
+        _bufferSize.Width = 72;
+        _bufferSize.Margin = new Thickness(5, 0, 5, 8);
+        settings.Children.Add(_bufferSize);
+        settings.Children.Add(MakeLabel("MB"));
+
+        settings.Children.Add(MakeLabel("Recuperar após:"));
+        _stallRecovery.ItemsSource = new[] { 8, 12, 20, 30, 45 };
+        _stallRecovery.Width = 66;
+        _stallRecovery.Margin = new Thickness(5, 0, 5, 8);
+        settings.Children.Add(_stallRecovery);
+        settings.Children.Add(MakeLabel("s"));
+
+        _autoRecovery.Content = "Recuperação automática";
+        _autoRecovery.Margin = new Thickness(10, 0, 14, 8);
+        settings.Children.Add(_autoRecovery);
+
         settings.Children.Add(MakeLabel("Upload:"));
         _uploadLimit.Width = 76;
         _uploadLimit.Margin = new Thickness(5, 0, 5, 8);
@@ -213,6 +235,10 @@ public sealed class P2pStreamingWindow : Window
         var stop = MakeButton("■ Parar P2P", Stop_Click);
         stop.Margin = new Thickness(8, 0, 0, 0);
         right.Children.Add(stop);
+
+        var recover = MakeButton("↻ Recuperar swarm", Recover_Click);
+        recover.Margin = new Thickness(8, 0, 0, 0);
+        right.Children.Add(recover);
 
         var clear = MakeButton("Limpar cache antigo", ClearCache_Click);
         clear.Margin = new Thickness(8, 0, 0, 0);
@@ -360,6 +386,11 @@ public sealed class P2pStreamingWindow : Window
             PrebufferBeforePlay = _prebuffer.IsChecked != false,
             AllowPortForwarding = _portForwarding.IsChecked == true,
             MaxCacheGb = _cacheLimit.SelectedItem is int gb ? gb : 10,
+            InitialBufferMb = _bufferSize.SelectedItem is int buffer ? buffer : 24,
+            StallRecoverySeconds = _stallRecovery.SelectedItem is int stall ? stall : 12,
+            AutoRecovery = _autoRecovery.IsChecked != false,
+            MetadataTimeoutSeconds = 60,
+            StartBufferTimeoutSeconds = 120,
             MaxUploadKibPerSecond = Math.Clamp(upload, 0, 1024 * 1024)
         };
 
@@ -385,6 +416,17 @@ public sealed class P2pStreamingWindow : Window
             ? _service.Settings.MaxCacheGb
             : 10;
 
+        var bufferOptions = new[] { 8, 16, 24, 32, 64, 96 };
+        _bufferSize.SelectedItem = bufferOptions.Contains(_service.Settings.InitialBufferMb)
+            ? _service.Settings.InitialBufferMb
+            : 24;
+
+        var stallOptions = new[] { 8, 12, 20, 30, 45 };
+        _stallRecovery.SelectedItem = stallOptions.Contains(_service.Settings.StallRecoverySeconds)
+            ? _service.Settings.StallRecoverySeconds
+            : 12;
+
+        _autoRecovery.IsChecked = _service.Settings.AutoRecovery;
         _uploadLimit.Text = _service.Settings.MaxUploadKibPerSecond.ToString();
     }
 
@@ -399,17 +441,59 @@ public sealed class P2pStreamingWindow : Window
     {
         var s = _service.GetStats();
         _stats.Text = _service.HasActiveSession
-            ? "Estado: " + s.State +
+            ? "Saúde: " + s.Health +
+              " • Estado: " + s.State +
               " • Peers: " + s.Peers +
               " • ↓ " + s.DownloadRateText +
               " • ↑ " + s.UploadRateText +
               " • Recebido: " + s.DownloadedText +
-              " • Enviado: " + s.UploadedText +
-              " • arquivo: " + s.SelectedProgress.ToString("0.0") + "%"
+              " • arquivo: " + s.SelectedProgress.ToString("0.0") + "%" +
+              " • recuperações: " + s.RecoveryCount +
+              (s.LastRecovery == "nenhuma" ? "" : " • última: " + s.LastRecovery)
             : "P2P parado.";
 
         _cache.Text = "Cache: " + s.CacheText +
             " / limite " + _service.Settings.MaxCacheGb + " GB • " + _service.CacheRoot;
+    }
+
+    private async void MaintenanceTick(object? sender, EventArgs e)
+    {
+        if (_maintenanceRunning)
+            return;
+
+        _maintenanceRunning = true;
+        try
+        {
+            await _service.MaintainAsync();
+            RefreshStats();
+        }
+        catch
+        {
+            // O watchdog nunca deve derrubar a interface.
+        }
+        finally
+        {
+            _maintenanceRunning = false;
+        }
+    }
+
+    private async void Recover_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SetBusy(true, "Forçando nova descoberta de peers...");
+            await _service.RecoverNowAsync();
+            RefreshStats();
+            _status.Text = "Recuperação solicitada: tracker + DHT + prioridade do vídeo.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Recuperação falhou: " + ex.Message;
+        }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private void SetBusy(bool busy, string? text = null)
