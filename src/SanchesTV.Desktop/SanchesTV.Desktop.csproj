@@ -16,5 +16,9 @@
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <PackageReference Include="NAudio" Version="3.1.0" />
+    <PackageReference Include="MonoTorrent" Version="3.9.0-alpha.unstable.rev0000" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\licenses\MonoTorrent-LICENSE.txt" Link="licenses\MonoTorrent-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
