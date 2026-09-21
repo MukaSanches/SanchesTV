@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using LibVLCSharp.Shared;
 using SanchesTV.Core.Catalog;
@@ -41,15 +42,21 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         VideoView.Loaded += (_, _) => VideoView.MediaPlayer = _player.MediaPlayer;
-        _player.PlaybackError += (_, message) => Dispatcher.Invoke(() => StatusText.Text = message);
+        _player.PlaybackError += (_, message) => Dispatcher.Invoke(() =>
+        {
+            StatusText.Text = message;
+            TitleStatusText.Text = "Falha de reprodução";
+        });
         Loaded += MainWindow_Loaded;
     }
+
+    private void Window_SourceInitialized(object? sender, EventArgs e) => Windows11Backdrop.Apply(this);
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 4.0...");
+            SetBusy(true, "Inicializando SanchesTV 5.0...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -57,37 +64,41 @@ public partial class MainWindow : Window
                 await _db.UpsertChannelsAsync(BuiltInCatalog.Create());
 
             await RefreshChannelsAsync();
-            SetBusy(false);
+            await ShowHomeAsync();
             StatusText.Text = "Pronto";
+            TitleStatusText.Text = "Central de TV em Português";
+            SetBusy(false);
 
-            await AutoSyncPortugueseCatalogAsync();
+            await AutoSyncCatalogAsync();
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Falha ao iniciar", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusText.Text = "Erro na inicialização";
+            TitleStatusText.Text = "Erro";
             SetBusy(false);
         }
     }
 
-    private async Task AutoSyncPortugueseCatalogAsync()
+    private async Task AutoSyncCatalogAsync()
     {
         try
         {
-            var raw = await _db.GetSettingAsync("catalog.v4.ptbr.last_sync_utc");
-            if (DateTimeOffset.TryParse(raw, out var last) && DateTimeOffset.UtcNow - last < TimeSpan.FromHours(12))
+            var raw = await _db.GetSettingAsync("catalog.v5.last_sync_utc");
+            if (DateTimeOffset.TryParse(raw, out var last) &&
+                DateTimeOffset.UtcNow - last < TimeSpan.FromHours(12))
                 return;
 
-            await SyncPortugueseCatalogAsync(false);
+            await SyncCatalogAsync(false);
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Catálogo PT/BR: atualização automática indisponível ({ex.Message})";
+            StatusText.Text = $"Catálogo: atualização automática indisponível ({ex.Message})";
             SetBusy(false);
         }
     }
 
-    private async Task SyncPortugueseCatalogAsync(bool showResult)
+    private async Task SyncCatalogAsync(bool showResult)
     {
         if (_catalogSyncRunning)
             return;
@@ -97,8 +108,9 @@ public partial class MainWindow : Window
 
         try
         {
-            SetBusy(true, "Buscando canais em português no GitHub...");
-            StatusText.Text = "Sincronizando 6 fontes PT/BR pré-carregadas...";
+            SetBusy(true, "Atualizando catálogo e miniaturas...");
+            StatusText.Text = $"Sincronizando {PortugueseCatalogRegistry.Sources.Count} fontes automáticas...";
+            TitleStatusText.Text = "Atualizando catálogo";
 
             var service = new PortugueseCatalogSyncService(_http);
             var result = await service.DownloadAsync();
@@ -107,16 +119,18 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Nenhuma fonte do catálogo pôde ser baixada.");
 
             await _db.UpsertChannelsAsync(result.Channels);
-            await _db.SetSettingAsync("catalog.v4.ptbr.last_sync_utc", DateTimeOffset.UtcNow.ToString("O"));
+            await _db.SetSettingAsync("catalog.v5.last_sync_utc", DateTimeOffset.UtcNow.ToString("O"));
             await RefreshChannelsAsync();
+            await RefreshHomeListsAsync();
 
             var added = Math.Max(0, _allChannels.Count - before);
             StatusText.Text =
-                $"Catálogo PT/BR: {result.CandidateChannels:N0} entradas processadas • {added:N0} novos • {_allChannels.Count:N0} canais no banco";
+                $"{result.CandidateChannels:N0} entradas • {added:N0} novos • {_allChannels.Count:N0} canais";
+            TitleStatusText.Text = $"{_allChannels.Count:N0} canais • {_allChannels.Sum(c => c.Sources.Count):N0} fontes";
 
             if (showResult)
             {
-                var sourceText = $"{result.DownloadedSources} fontes GitHub atualizadas";
+                var sourceText = $"{result.DownloadedSources} fontes atualizadas";
                 if (result.FailedSources > 0)
                     sourceText += $" • {result.FailedSources} com falha";
 
@@ -126,17 +140,18 @@ public partial class MainWindow : Window
 
                 MessageBox.Show(
                     this,
-                    $"{sourceText}\nEntradas portuguesas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal atual no SanchesTV: {_allChannels.Count:N0}{errors}",
-                    "Catálogo Português — SanchesTV 4.0",
+                    $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
+                    "Catálogo SanchesTV 5.0",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Falha ao atualizar catálogo PT/BR: {ex.Message}";
+            StatusText.Text = $"Falha ao atualizar catálogo: {ex.Message}";
+            TitleStatusText.Text = "Atualização incompleta";
             if (showResult)
-                MessageBox.Show(this, ex.Message, "Catálogo PT/BR", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, ex.Message, "Catálogo", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -149,6 +164,38 @@ public partial class MainWindow : Window
     {
         _allChannels = await _db.GetChannelsAsync();
         await ApplyFilterAsync();
+    }
+
+    private async Task RefreshHomeListsAsync()
+    {
+        var recentIds = await _db.GetRecentChannelIdsAsync(14);
+        var order = recentIds.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+
+        RecentHomeList.ItemsSource = _allChannels
+            .Where(c => order.ContainsKey(c.Id))
+            .OrderBy(c => order[c.Id])
+            .Take(12)
+            .Select(c => new ChannelListItem(c))
+            .ToArray();
+
+        BrazilHomeList.ItemsSource = _allChannels
+            .Where(IsBrazil)
+            .OrderByDescending(c => c.IsFavorite)
+            .ThenBy(c => c.Name)
+            .Take(12)
+            .Select(c => new ChannelListItem(c))
+            .ToArray();
+
+        MoviesHomeList.ItemsSource = _allChannels
+            .Where(IsMovie)
+            .OrderByDescending(c => c.IsFavorite)
+            .ThenBy(c => c.Name)
+            .Take(12)
+            .Select(c => new ChannelListItem(c))
+            .ToArray();
+
+        HomeCountText.Text =
+            $"{_allChannels.Count:N0} canais • {_allChannels.Sum(c => c.Sources.Count):N0} fontes";
     }
 
     private async Task ApplyFilterAsync()
@@ -166,17 +213,11 @@ public partial class MainWindow : Window
             query = query.Where(c => order.ContainsKey(c.Id)).OrderBy(c => order[c.Id]);
         }
         else if (_mode == "br")
-        {
-            query = query.Where(c => string.Equals(c.Country, "BR", StringComparison.OrdinalIgnoreCase) ||
-                                     (c.EpgId?.Contains(".br", StringComparison.OrdinalIgnoreCase) ?? false));
-        }
-        else if (_mode == "lusophone")
-        {
-            query = query.Where(c =>
-                (!string.IsNullOrWhiteSpace(c.Country) && LusophoneCountryCodes.Contains(c.Country) &&
-                 !string.Equals(c.Country, "BR", StringComparison.OrdinalIgnoreCase)) ||
-                TextNormalizer.Normalize(c.Language ?? string.Empty).Contains("portugu", StringComparison.Ordinal));
-        }
+            query = query.Where(IsBrazil);
+        else if (_mode == "portuguese")
+            query = query.Where(IsPortuguese);
+        else if (_mode == "movies")
+            query = query.Where(IsMovie);
 
         var normalized = TextNormalizer.Normalize(SearchBox.Text ?? string.Empty);
         if (!string.IsNullOrWhiteSpace(normalized))
@@ -186,12 +227,37 @@ public partial class MainWindow : Window
                 TextNormalizer.Normalize(c.Category ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
                 TextNormalizer.Normalize(c.Country ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
                 TextNormalizer.Normalize(c.State ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
-                TextNormalizer.Normalize(c.Region ?? string.Empty).Contains(normalized, StringComparison.Ordinal));
+                TextNormalizer.Normalize(c.Region ?? string.Empty).Contains(normalized, StringComparison.Ordinal) ||
+                c.Sources.Any(s => TextNormalizer.Normalize(s.Provider).Contains(normalized, StringComparison.Ordinal)));
         }
 
         _visibleItems = query.Select(c => new ChannelListItem(c)).ToList();
         ChannelList.ItemsSource = _visibleItems;
         CountText.Text = $"{_visibleItems.Count:N0} canais • {_visibleItems.Sum(x => x.Channel.Sources.Count):N0} fontes";
+    }
+
+    private static bool IsBrazil(Channel c) =>
+        string.Equals(c.Country, "BR", StringComparison.OrdinalIgnoreCase) ||
+        (c.EpgId?.Contains(".br", StringComparison.OrdinalIgnoreCase) ?? false) ||
+        c.Sources.Any(s => s.Provider.Contains("Brasil", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsPortuguese(Channel c)
+    {
+        if (!string.IsNullOrWhiteSpace(c.Country) && LusophoneCountryCodes.Contains(c.Country))
+            return true;
+
+        var language = TextNormalizer.Normalize(c.Language ?? string.Empty);
+        return language.Contains("portugu", StringComparison.Ordinal) ||
+               c.Sources.Any(s => s.Provider.Contains("Português", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsMovie(Channel c)
+    {
+        var category = TextNormalizer.Normalize(c.Category ?? string.Empty);
+        return category.Contains("movie", StringComparison.Ordinal) ||
+               category.Contains("filme", StringComparison.Ordinal) ||
+               category.Contains("cinema", StringComparison.Ordinal) ||
+               c.Sources.Any(s => s.Provider.Contains("Filmes", StringComparison.OrdinalIgnoreCase));
     }
 
     private Channel? SelectedChannel =>
@@ -206,6 +272,10 @@ public partial class MainWindow : Window
         {
             SetBusy(true, $"Abrindo {channel.Name}...");
             StatusText.Text = "Testando fontes e iniciando...";
+            TitleStatusText.Text = $"Abrindo {channel.Name}";
+
+            BrowseView.Visibility = Visibility.Visible;
+            HomeView.Visibility = Visibility.Collapsed;
 
             var ordered = channel.Sources
                 .OrderBy(s => s.Status == StreamStatus.Online ? 0 : s.Status == StreamStatus.NotTested ? 1 : 2)
@@ -217,17 +287,49 @@ public partial class MainWindow : Window
             await _db.RecordPlayedAsync(channel.Id);
 
             NowPlayingText.Text = channel.Name;
-            StatusText.Text = $"Reproduzindo • {active.Provider} • {active.Url.Host}";
+            PlayerInitialText.Text = GetInitial(channel.Name);
+            SourceBadgeText.Text = active.Provider.Length > 34 ? active.Provider[..34] + "…" : active.Provider;
+            SetPlayerLogo(channel.Logo);
+
+            StatusText.Text = $"Reproduzindo • {active.Url.Host}";
+            TitleStatusText.Text = channel.Name;
             await UpdateEpgAsync(channel);
+            await RefreshHomeListsAsync();
         }
         catch (Exception ex)
         {
             StatusText.Text = "Nenhuma fonte iniciou";
+            TitleStatusText.Text = "Fonte indisponível";
             MessageBox.Show(this, ex.Message, "Falha de reprodução", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
             SetBusy(false);
+        }
+    }
+
+    private void SetPlayerLogo(string? logo)
+    {
+        PlayerLogo.Source = null;
+        if (string.IsNullOrWhiteSpace(logo))
+            return;
+
+        try
+        {
+            if (Uri.TryCreate(logo, UriKind.Absolute, out var uri))
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = uri;
+                bitmap.CacheOption = BitmapCacheOption.OnDemand;
+                bitmap.CreateOptions = BitmapCreateOptions.DelayCreation;
+                bitmap.EndInit();
+                PlayerLogo.Source = bitmap;
+            }
+        }
+        catch
+        {
+            PlayerLogo.Source = null;
         }
     }
 
@@ -241,14 +343,64 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy, string? text = null)
     {
         LoadingOverlay.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
-        if (text is not null) LoadingText.Text = text;
+        if (text is not null)
+            LoadingText.Text = text;
     }
 
-    private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) => await SyncPortugueseCatalogAsync(true);
+    private async Task ShowHomeAsync()
+    {
+        HomeView.Visibility = Visibility.Visible;
+        BrowseView.Visibility = Visibility.Collapsed;
+        await RefreshHomeListsAsync();
+        TitleStatusText.Text = "Central de TV em Português";
+    }
+
+    private async Task ShowBrowseAsync(string mode, string title, string subtitle)
+    {
+        _mode = mode;
+        HomeView.Visibility = Visibility.Collapsed;
+        BrowseView.Visibility = Visibility.Visible;
+        BrowseTitleText.Text = title;
+        BrowseSubtitleText.Text = subtitle;
+        await ApplyFilterAsync();
+        TitleStatusText.Text = $"{title} • {_visibleItems.Count:N0}";
+    }
+
+    private async void Home_Click(object sender, RoutedEventArgs e) => await ShowHomeAsync();
+
+    private async void All_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("all", "Ao vivo", "Todos os canais disponíveis no catálogo local.");
+
+    private async void Movies_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("movies", "Filmes", "Playlist Movies do IPTV-org e canais classificados como cinema/filmes.");
+
+    private async void Brazil_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("br", "Brasil", "Canais brasileiros agregados das fontes públicas configuradas.");
+
+    private async void Lusophone_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("portuguese", "Português", "Conteúdo classificado em português e países lusófonos.");
+
+    private async void Favorites_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("favorites", "Favoritos", "Seus canais marcados como favoritos.");
+
+    private async void Recent_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("recent", "Recentes", "Canais assistidos recentemente.");
+
+    private async void MyTv_Click(object sender, RoutedEventArgs e) =>
+        await ShowBrowseAsync("mytv", "Minha TV", "Sua seleção pessoal de canais.");
 
     private void Premium_Click(object sender, RoutedEventArgs e)
     {
         new PremiumHubWindow { Owner = this }.Show();
+    }
+
+    private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) =>
+        await SyncCatalogAsync(true);
+
+    private async void HomeList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBox list && list.SelectedItem is ChannelListItem item)
+            await PlayChannelAsync(item.Channel);
     }
 
     private async void ImportFile_Click(object sender, RoutedEventArgs e)
@@ -258,7 +410,8 @@ public partial class MainWindow : Window
             Title = "Importar lista M3U",
             Filter = "Playlists M3U|*.m3u;*.m3u8|Todos os arquivos|*.*"
         };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(this) != true)
+            return;
 
         try
         {
@@ -267,19 +420,24 @@ public partial class MainWindow : Window
             var channels = M3uParser.Parse(text, Path.GetFileName(dialog.FileName));
             var count = await _db.UpsertChannelsAsync(channels);
             await RefreshChannelsAsync();
+            await RefreshHomeListsAsync();
             StatusText.Text = $"{count:N0} entradas processadas";
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Erro ao importar", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { SetBusy(false); }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async void ImportUrl_Click(object sender, RoutedEventArgs e)
     {
         var input = new InputDialog("Adicionar M3U", "URL da playlist M3U/M3U8:") { Owner = this };
-        if (input.ShowDialog() != true || !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri)) return;
+        if (input.ShowDialog() != true || !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri))
+            return;
 
         try
         {
@@ -288,22 +446,29 @@ public partial class MainWindow : Window
             var channels = M3uParser.Parse(text, uri.Host);
             var count = await _db.UpsertChannelsAsync(channels);
             await RefreshChannelsAsync();
+            await RefreshHomeListsAsync();
             StatusText.Text = $"{count:N0} entradas processadas";
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Erro ao importar URL", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { SetBusy(false); }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async void Xtream_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new XtreamDialog { Owner = this };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog() != true)
+            return;
+
         if (!Uri.TryCreate(dialog.Server, UriKind.Absolute, out _))
         {
-            MessageBox.Show(this, "Informe um servidor HTTP/HTTPS válido.", "Xtream", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Informe um servidor HTTP/HTTPS válido.", "Xtream",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -314,86 +479,105 @@ public partial class MainWindow : Window
             var channels = await importer.ImportLiveAsync(dialog.Server, dialog.Username, dialog.Password);
             var count = await _db.UpsertChannelsAsync(channels);
             await RefreshChannelsAsync();
+            await RefreshHomeListsAsync();
             StatusText.Text = $"{count:N0} canais Xtream processados";
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Falha no Xtream", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { SetBusy(false); }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async void ImportEpg_Click(object sender, RoutedEventArgs e)
     {
-        var choose = MessageBox.Show(this,
-            "Clique em Sim para carregar um arquivo XMLTV local. Clique em Não para informar uma URL XMLTV.",
+        var choose = MessageBox.Show(
+            this,
+            "Sim: arquivo XMLTV local.\nNão: informar uma URL XMLTV.",
             "Adicionar EPG",
             MessageBoxButton.YesNoCancel,
             MessageBoxImage.Question);
 
-        if (choose == MessageBoxResult.Cancel) return;
+        if (choose == MessageBoxResult.Cancel)
+            return;
 
         try
         {
             SetBusy(true, "Processando EPG...");
             string xml;
+
             if (choose == MessageBoxResult.Yes)
             {
                 var dialog = new OpenFileDialog { Filter = "XMLTV|*.xml;*.xmltv|Todos os arquivos|*.*" };
-                if (dialog.ShowDialog(this) != true) return;
+                if (dialog.ShowDialog(this) != true)
+                    return;
                 xml = await File.ReadAllTextAsync(dialog.FileName);
             }
             else
             {
                 var input = new InputDialog("EPG XMLTV", "URL XMLTV:") { Owner = this };
-                if (input.ShowDialog() != true || !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri)) return;
+                if (input.ShowDialog() != true || !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri))
+                    return;
                 xml = await _http.GetStringAsync(uri);
             }
 
             var programs = XmlTvParser.Parse(xml);
             await _db.ReplaceEpgAsync(programs);
             StatusText.Text = $"{programs.Count:N0} programas de EPG importados";
-            if (_currentChannel is not null) await UpdateEpgAsync(_currentChannel);
+
+            if (_currentChannel is not null)
+                await UpdateEpgAsync(_currentChannel);
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Erro no EPG", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { SetBusy(false); }
-    }
-
-    private async void BuiltIn_Click(object sender, RoutedEventArgs e)
-    {
-        var count = await _db.UpsertChannelsAsync(BuiltInCatalog.Create());
-        await RefreshChannelsAsync();
-        StatusText.Text = $"Catálogo base atualizado ({count:N0} entradas)";
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
     {
-        var channel = SelectedChannel;
-        if (channel is null) return;
+        var channel = SelectedChannel ?? _currentChannel;
+        if (channel is null)
+            return;
+
         await _db.SetFavoriteAsync(channel.Id, !channel.IsFavorite);
         await RefreshChannelsAsync();
+        await RefreshHomeListsAsync();
     }
 
     private async void ToggleMyTv_Click(object sender, RoutedEventArgs e)
     {
-        var channel = SelectedChannel;
-        if (channel is null) return;
+        var channel = SelectedChannel ?? _currentChannel;
+        if (channel is null)
+            return;
 
         int? position = null;
         if (channel.MyTvPosition is null)
-            position = _allChannels.Where(c => c.MyTvPosition is not null).Select(c => c.MyTvPosition!.Value).DefaultIfEmpty(0).Max() + 1;
+        {
+            position = _allChannels
+                .Where(c => c.MyTvPosition is not null)
+                .Select(c => c.MyTvPosition!.Value)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+        }
 
         await _db.SetMyTvPositionAsync(channel.Id, position);
         await RefreshChannelsAsync();
+        await RefreshHomeListsAsync();
     }
 
     private async void HealthCheck_Click(object sender, RoutedEventArgs e)
     {
-        var channel = SelectedChannel;
-        if (channel is null) return;
+        var channel = SelectedChannel ?? _currentChannel;
+        if (channel is null)
+            return;
 
         SetBusy(true, "Testando fontes...");
         try
@@ -401,6 +585,7 @@ public partial class MainWindow : Window
             using var healthHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
             var checker = new StreamHealthChecker(healthHttp);
             var messages = new List<string>();
+
             foreach (var source in channel.Sources)
             {
                 if (source.Url.Scheme is not ("http" or "https"))
@@ -408,12 +593,18 @@ public partial class MainWindow : Window
                     messages.Add($"{source.Provider}: protocolo {source.Url.Scheme} — teste pelo player");
                     continue;
                 }
+
                 var result = await checker.CheckAsync(source);
                 messages.Add($"{source.Provider}: {result.Status} ({result.Latency?.TotalMilliseconds:N0} ms)");
             }
-            MessageBox.Show(this, string.Join(Environment.NewLine, messages), $"Fontes — {channel.Name}", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            MessageBox.Show(this, string.Join(Environment.NewLine, messages),
+                $"Fontes — {channel.Name}", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        finally { SetBusy(false); }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async void ChannelList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -424,34 +615,43 @@ public partial class MainWindow : Window
 
     private async void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (SelectedChannel is { } channel)
-        {
-            var (now, next) = await _db.GetNowNextAsync(channel.EpgId);
-            StatusText.Text = now is null
-                ? $"{channel.Name} • {channel.Sources.Count} fonte(s)"
-                : $"{channel.Name} • {now.Title}";
-            if (next is not null)
-                ToolTip = $"A seguir: {next.Title}";
-        }
+        if (SelectedChannel is not { } channel)
+            return;
+
+        var (now, next) = await _db.GetNowNextAsync(channel.EpgId);
+        StatusText.Text = now is null
+            ? $"{channel.Name} • {channel.Sources.Count} fonte(s)"
+            : $"{channel.Name} • {now.Title}";
+
+        if (next is not null)
+            ToolTip = $"A seguir: {next.Title}";
     }
 
-    private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => await ApplyFilterAsync();
+    private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!IsLoaded)
+            return;
 
-    private async void All_Click(object sender, RoutedEventArgs e) { _mode = "all"; await ApplyFilterAsync(); }
-    private async void Brazil_Click(object sender, RoutedEventArgs e) { _mode = "br"; await ApplyFilterAsync(); }
-    private async void Lusophone_Click(object sender, RoutedEventArgs e) { _mode = "lusophone"; await ApplyFilterAsync(); }
-    private async void Favorites_Click(object sender, RoutedEventArgs e) { _mode = "favorites"; await ApplyFilterAsync(); }
-    private async void Recent_Click(object sender, RoutedEventArgs e) { _mode = "recent"; await ApplyFilterAsync(); }
-    private async void MyTv_Click(object sender, RoutedEventArgs e) { _mode = "mytv"; await ApplyFilterAsync(); }
+        await ApplyFilterAsync();
+        TitleStatusText.Text = $"{BrowseTitleText.Text} • {_visibleItems.Count:N0}";
+    }
 
     private async void Previous_Click(object sender, RoutedEventArgs e) => await StepChannelAsync(-1);
     private async void Next_Click(object sender, RoutedEventArgs e) => await StepChannelAsync(+1);
 
     private async Task StepChannelAsync(int delta)
     {
-        if (_visibleItems.Count == 0) return;
-        var current = _currentChannel is null ? -1 : _visibleItems.FindIndex(x => x.Channel.Id == _currentChannel.Id);
-        var index = current < 0 ? 0 : (current + delta + _visibleItems.Count) % _visibleItems.Count;
+        if (_visibleItems.Count == 0)
+            return;
+
+        var current = _currentChannel is null
+            ? -1
+            : _visibleItems.FindIndex(x => x.Channel.Id == _currentChannel.Id);
+
+        var index = current < 0
+            ? 0
+            : (current + delta + _visibleItems.Count) % _visibleItems.Count;
+
         ChannelList.SelectedIndex = index;
         ChannelList.ScrollIntoView(ChannelList.SelectedItem);
         await PlayChannelAsync(_visibleItems[index].Channel);
@@ -459,14 +659,17 @@ public partial class MainWindow : Window
 
     private async void PlayPause_Click(object sender, RoutedEventArgs e)
     {
-        if (_player.MediaPlayer.IsPlaying) await _player.PauseAsync();
-        else await _player.PlayAsync();
+        if (_player.MediaPlayer.IsPlaying)
+            await _player.PauseAsync();
+        else
+            await _player.PlayAsync();
     }
 
     private async void Stop_Click(object sender, RoutedEventArgs e)
     {
         await _player.StopAsync();
         StatusText.Text = "Parado";
+        TitleStatusText.Text = "Reprodução parada";
     }
 
     private async void Mute_Click(object sender, RoutedEventArgs e)
@@ -478,7 +681,9 @@ public partial class MainWindow : Window
 
     private async void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!IsLoaded) return;
+        if (!IsLoaded)
+            return;
+
         await _player.SetVolumeAsync(e.NewValue);
     }
 
@@ -489,6 +694,7 @@ public partial class MainWindow : Window
             StatusText.Text = "Esta fonte não oferece timeshift/seek.";
             return;
         }
+
         _player.MediaPlayer.Time = Math.Max(0, _player.MediaPlayer.Time - 30_000);
     }
 
@@ -499,6 +705,7 @@ public partial class MainWindow : Window
             StatusText.Text = "Esta fonte não oferece retorno ao vivo por seek.";
             return;
         }
+
         _player.MediaPlayer.Position = 1f;
         _player.MediaPlayer.SetPause(false);
     }
@@ -513,11 +720,14 @@ public partial class MainWindow : Window
 
         if (!_isRecording)
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "SanchesTV");
+            var directory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
+                "SanchesTV");
+
             if (_player.StartRecording(directory))
             {
                 _isRecording = true;
-                RecordButton.Content = "■ Parar gravação";
+                RecordButton.Content = "■ STOP REC";
                 StatusText.Text = $"Gravando em {directory}";
             }
             else
@@ -529,14 +739,18 @@ public partial class MainWindow : Window
         {
             _player.StopRecording();
             _isRecording = false;
-            RecordButton.Content = "● Gravar";
-            StatusText.Text = _player.RecordingPath is null ? "Gravação encerrada" : $"Gravação salva: {_player.RecordingPath}";
+            RecordButton.Content = "● REC";
+            StatusText.Text = _player.RecordingPath is null
+                ? "Gravação encerrada"
+                : $"Gravação salva: {_player.RecordingPath}";
         }
     }
 
     private void Pip_Click(object sender, RoutedEventArgs e)
     {
-        if (_player.CurrentChannelSource is null) return;
+        if (_player.CurrentChannelSource is null)
+            return;
+
         new PipWindow(_player.CurrentChannelSource) { Owner = this }.Show();
     }
 
@@ -589,11 +803,15 @@ public partial class MainWindow : Window
                 var u = new Uri(source);
                 source = $"{u.Scheme}://***@{u.Host}{u.AbsolutePath}";
             }
-            catch { source = "(fonte protegida)"; }
+            catch
+            {
+                source = "(fonte protegida)";
+            }
         }
 
         var text =
-            $"SanchesTV: 4.0.0\n" +
+            $"SanchesTV: 5.0.0\n" +
+            $"Interface: Fluent Cinema / Mica\n" +
             $"Engine: {_player.Name}\n" +
             $"Estado: {mp.State}\n" +
             $"Provider: {active?.Provider ?? "(nenhum)"}\n" +
@@ -605,6 +823,7 @@ public partial class MainWindow : Window
             $"Seek/timeshift: {(mp.IsSeekable ? "sim" : "não")}\n" +
             $"Pausa: {(mp.CanPause ? "sim" : "não")}\n" +
             $"Catálogo local: {_allChannels.Count:N0} canais\n" +
+            $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";
 
         MessageBox.Show(this, text, "Diagnóstico SanchesTV", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -615,12 +834,35 @@ public partial class MainWindow : Window
     private void ToggleFullscreen()
     {
         _isFullscreen = !_isFullscreen;
-        HeaderPanel.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
-        FooterPanel.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
-        LibraryPanel.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
-        LibraryColumn.Width = _isFullscreen ? new GridLength(0) : new GridLength(410);
-        WindowStyle = _isFullscreen ? WindowStyle.None : WindowStyle.SingleBorderWindow;
+
+        TitleBar.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
+        NavigationPanel.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
+        NavigationColumn.Width = _isFullscreen ? new GridLength(0) : new GridLength(232);
+
         WindowState = _isFullscreen ? WindowState.Maximized : WindowState.Normal;
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximize();
+            return;
+        }
+
+        if (e.LeftButton == MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximize()
+    {
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -630,7 +872,12 @@ public partial class MainWindow : Window
             ToggleFullscreen();
             e.Handled = true;
         }
-        else if (e.Key == Key.Space)
+        else if (e.Key == Key.F11)
+        {
+            ToggleFullscreen();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Space && BrowseView.Visibility == Visibility.Visible)
         {
             PlayPause_Click(this, new RoutedEventArgs());
             e.Handled = true;
@@ -649,19 +896,38 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (_remote is not null) await _remote.DisposeAsync();
+        if (_remote is not null)
+            await _remote.DisposeAsync();
+
         await _player.DisposeAsync();
         _http.Dispose();
+    }
+
+    private static string GetInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "TV";
+
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+            return string.Concat(words[0][0], words[1][0]).ToUpperInvariant();
+
+        return name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
     }
 
     private sealed class ChannelListItem
     {
         public Channel Channel { get; }
         public string Name => Channel.Name;
-        public string Details => string.Join(" • ", new[] { Channel.Country, Channel.Category }.Where(x => !string.IsNullOrWhiteSpace(x)));
-        public string SourceInfo => $"{Channel.Sources.Count} fonte(s)" +
-                                    (Channel.Sources.FirstOrDefault() is { } source ? $" • {source.Provider}" : string.Empty);
-        public string VirtualNumber => Channel.VirtualNumber?.ToString("000") ?? string.Empty;
+        public string? Logo => Channel.Logo;
+        public string Initial => GetInitial(Channel.Name);
+        public string Details => string.Join(
+            " • ",
+            new[] { Channel.Country, Channel.Category }
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+        public string SourceInfo =>
+            $"{Channel.Sources.Count} fonte(s)" +
+            (Channel.Sources.FirstOrDefault() is { } source ? $" • {source.Provider}" : string.Empty);
         public string FavoriteMark => Channel.IsFavorite ? "★" : string.Empty;
 
         public ChannelListItem(Channel channel) => Channel = channel;
