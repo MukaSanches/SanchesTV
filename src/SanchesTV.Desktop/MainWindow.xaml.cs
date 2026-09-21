@@ -187,7 +187,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 6.1...");
+            SetBusy(true, "Inicializando SanchesTV 6.1.1...");
             await _db.InitializeAsync();
 
             var existing = await _db.GetChannelsAsync();
@@ -273,7 +273,7 @@ public partial class MainWindow : Window
                 MessageBox.Show(
                     this,
                     $"{sourceText}\nEntradas processadas: {result.CandidateChannels:N0}\nNovos canais após deduplicação: {added:N0}\nTotal local: {_allChannels.Count:N0}{errors}",
-                    "Catálogo SanchesTV 6.1",
+                    "Catálogo SanchesTV 6.1.1",
                     MessageBoxButton.OK,
                     result.FailedSources == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             }
@@ -1195,7 +1195,7 @@ public partial class MainWindow : Window
 
         var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 6.1.0\n" +
+            $"SanchesTV: 6.1.1\n" +
             $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
             $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
@@ -1207,7 +1207,7 @@ public partial class MainWindow : Window
             $"Fontes automáticas: {PortugueseCatalogRegistry.Sources.Count}\n" +
             $"Banco: {_db.DatabasePath}";
 
-        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6.1", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, text, "Diagnóstico SanchesTV 6.1.1", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -1244,6 +1244,8 @@ public partial class MainWindow : Window
             ChannelBrowserColumn.Width = new GridLength(0);
             BrowseGapColumn.Width = new GridLength(0);
             PlayerPanel.Visibility = Visibility.Visible;
+            PlayerPanel.BorderThickness = new Thickness(0);
+            PlayerPanel.CornerRadius = new CornerRadius(0);
             PlayerColumn.Width = new GridLength(1, GridUnitType.Star);
             BrowseView.Margin = new Thickness(0);
 
@@ -1268,6 +1270,8 @@ public partial class MainWindow : Window
 
             BrowseHeader.Visibility = Visibility.Visible;
             ChannelBrowserPanel.Visibility = Visibility.Visible;
+            PlayerPanel.BorderThickness = new Thickness(1);
+            PlayerPanel.CornerRadius = new CornerRadius(16);
             PlayerSecondaryCommands.Visibility = Visibility.Visible;
             BrowseView.Margin = new Thickness(24, 20, 24, 20);
 
