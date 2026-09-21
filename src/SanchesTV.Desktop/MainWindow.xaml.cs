@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private bool _isFullscreen;
     private bool _isRecording;
     private bool _catalogSyncRunning;
+    private WindowState _windowStateBeforeFullscreen = WindowState.Normal;
 
     public MainWindow()
     {
@@ -52,6 +53,44 @@ public partial class MainWindow : Window
 
     private void Window_SourceInitialized(object? sender, EventArgs e) => Windows11Backdrop.Apply(this);
 
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!_isFullscreen)
+            ApplyResponsiveLayout();
+    }
+
+    private void ApplyResponsiveLayout()
+    {
+        if (ActualWidth < 1220)
+        {
+            NavigationColumn.Width = new GridLength(184);
+            ChannelBrowserColumn.Width = new GridLength(318);
+            BrowseGapColumn.Width = new GridLength(10);
+            SearchColumn.Width = new GridLength(250);
+        }
+        else if (ActualWidth < 1460)
+        {
+            NavigationColumn.Width = new GridLength(202);
+            ChannelBrowserColumn.Width = new GridLength(352);
+            BrowseGapColumn.Width = new GridLength(12);
+            SearchColumn.Width = new GridLength(290);
+        }
+        else if (ActualWidth < 1750)
+        {
+            NavigationColumn.Width = new GridLength(216);
+            ChannelBrowserColumn.Width = new GridLength(390);
+            BrowseGapColumn.Width = new GridLength(14);
+            SearchColumn.Width = new GridLength(330);
+        }
+        else
+        {
+            NavigationColumn.Width = new GridLength(228);
+            ChannelBrowserColumn.Width = new GridLength(430);
+            BrowseGapColumn.Width = new GridLength(16);
+            SearchColumn.Width = new GridLength(380);
+        }
+    }
+
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
@@ -64,6 +103,7 @@ public partial class MainWindow : Window
                 await _db.UpsertChannelsAsync(BuiltInCatalog.Create());
 
             await RefreshChannelsAsync();
+            ApplyResponsiveLayout();
             await ShowHomeAsync();
             StatusText.Text = "Pronto";
             TitleStatusText.Text = "Central de TV em Português";
@@ -810,7 +850,7 @@ public partial class MainWindow : Window
         }
 
         var text =
-            $"SanchesTV: 5.0.0\n" +
+            $"SanchesTV: 5.1.0\n" +
             $"Interface: Fluent Cinema / Mica\n" +
             $"Engine: {_player.Name}\n" +
             $"Estado: {mp.State}\n" +
@@ -831,15 +871,71 @@ public partial class MainWindow : Window
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
 
+    private void VideoSurface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2)
+            return;
+
+        ToggleFullscreen();
+        e.Handled = true;
+    }
+
     private void ToggleFullscreen()
     {
-        _isFullscreen = !_isFullscreen;
+        if (!_isFullscreen)
+        {
+            _isFullscreen = true;
+            _windowStateBeforeFullscreen = WindowState;
 
-        TitleBar.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
-        NavigationPanel.Visibility = _isFullscreen ? Visibility.Collapsed : Visibility.Visible;
-        NavigationColumn.Width = _isFullscreen ? new GridLength(0) : new GridLength(232);
+            if (_currentChannel is not null)
+            {
+                HomeView.Visibility = Visibility.Collapsed;
+                BrowseView.Visibility = Visibility.Visible;
+            }
 
-        WindowState = _isFullscreen ? WindowState.Maximized : WindowState.Normal;
+            TitleBar.Visibility = Visibility.Collapsed;
+            NavigationPanel.Visibility = Visibility.Collapsed;
+            NavigationColumn.Width = new GridLength(0);
+
+            BrowseHeader.Visibility = Visibility.Collapsed;
+            ChannelBrowserPanel.Visibility = Visibility.Collapsed;
+            ChannelBrowserColumn.Width = new GridLength(0);
+            BrowseGapColumn.Width = new GridLength(0);
+            BrowseView.Margin = new Thickness(0);
+
+            PlayerSecondaryCommands.Visibility = Visibility.Collapsed;
+            FullscreenButton.Content = "↙  Sair da tela cheia  F11";
+            FullscreenButton.ToolTip = "Sair da tela cheia — F11, Esc ou duplo clique";
+
+            ResizeMode = ResizeMode.NoResize;
+            Topmost = true;
+            WindowState = WindowState.Maximized;
+            TitleStatusText.Text = "Tela cheia • F11 / Esc / duplo clique para sair";
+        }
+        else
+        {
+            _isFullscreen = false;
+
+            Topmost = false;
+            ResizeMode = ResizeMode.CanResize;
+            TitleBar.Visibility = Visibility.Visible;
+            NavigationPanel.Visibility = Visibility.Visible;
+
+            BrowseHeader.Visibility = Visibility.Visible;
+            ChannelBrowserPanel.Visibility = Visibility.Visible;
+            PlayerSecondaryCommands.Visibility = Visibility.Visible;
+            BrowseView.Margin = new Thickness(24, 20, 24, 20);
+
+            FullscreenButton.Content = "⛶  Tela cheia  F11";
+            FullscreenButton.ToolTip = "Tela cheia — F11 ou duplo clique no vídeo";
+
+            WindowState = _windowStateBeforeFullscreen == WindowState.Minimized
+                ? WindowState.Normal
+                : _windowStateBeforeFullscreen;
+
+            ApplyResponsiveLayout();
+            TitleStatusText.Text = _currentChannel?.Name ?? "Central de TV em Português";
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
