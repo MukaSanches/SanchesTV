@@ -4,6 +4,8 @@ using LibVLCSharp.Shared;
 using SanchesTV.Core.Catalog;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
+using SanchesTV.Desktop.Playback;
+using SanchesTV.Desktop.Audio;
 
 namespace SanchesTV.Desktop;
 
@@ -54,6 +56,19 @@ internal static class SelfTest
             using var lib = new LibVLC("--no-video-title-show", "--quiet");
             using var player = new MediaPlayer(lib);
             _ = player.Volume;
+
+            var mpvVersion = MpvNative.SelfTest();
+            if (string.IsNullOrWhiteSpace(mpvVersion))
+                return 21;
+
+            using var recorder = new FfmpegRecorder();
+            var ffmpegVersion = await recorder.GetVersionAsync();
+            if (!ffmpegVersion.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase))
+                return 22;
+
+            var audio = new WindowsAudioService();
+            if (string.IsNullOrWhiteSpace(audio.NAudioVersion))
+                return 23;
 
             try { File.Delete(temp); } catch { }
             return 0;
