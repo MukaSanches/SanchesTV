@@ -6,7 +6,7 @@ namespace SanchesTV.Tests;
 public sealed class UiLayoutPolicyTests
 {
     [Theory]
-    [InlineData(520, 360, UiLayoutMode.Tiny)]
+    [InlineData(480, 320, UiLayoutMode.Tiny)]\n    [InlineData(520, 360, UiLayoutMode.Tiny)]
     [InlineData(720, 480, UiLayoutMode.Tiny)]
     [InlineData(800, 600, UiLayoutMode.Compact)]
     [InlineData(1024, 768, UiLayoutMode.Compact)]
