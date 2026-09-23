@@ -1,3 +1,4 @@
+using Xunit;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Playback;
 
