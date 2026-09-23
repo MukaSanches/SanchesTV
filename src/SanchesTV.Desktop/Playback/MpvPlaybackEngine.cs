@@ -201,7 +201,7 @@ public sealed class MpvPlaybackEngine : IAsyncDisposable
     private void ConfigureHttpHeaders(ChannelSource source)
     {
         MpvNative.TrySetProperty(_context, "user-agent",
-            string.IsNullOrWhiteSpace(source.UserAgent) ? "SanchesTV/8.0.0" : source.UserAgent);
+            string.IsNullOrWhiteSpace(source.UserAgent) ? "SanchesTV/8.1.0" : source.UserAgent);
 
         MpvNative.TrySetProperty(_context, "referrer",
             string.IsNullOrWhiteSpace(source.Referrer) ? string.Empty : source.Referrer);

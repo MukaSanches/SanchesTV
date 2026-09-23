@@ -1,8 +1,17 @@
-# SanchesTV 8.0.0 — Cinema OS
+# SanchesTV 8.1.0 — Cinema OS Refined
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 
-A V8.0.0 preserva a plataforma multimídia da linha 7.x e inicia o **Cinema OS**: uma evolução de experiência, resiliência e inteligência local de playback sem remover os módulos já existentes.
+A V8.1.0 preserva integralmente a plataforma multimídia e o Playback Intelligence da V8 e refina o **Cinema OS** com uma composição player-first, busca compacta, navegação mais limpa e uma solução específica para o airspace do libmpv: informações críticas do canal ficam fora da superfície HWND nativa e permanecem visíveis tanto em mpv quanto em LibVLC.
+
+## Cinema OS 8.1 — Refined
+
+- player como área hero em 1366×768, 1536×864 e telas maiores;
+- metadados, EPG, fonte e estado AO VIVO fora da superfície nativa do libmpv, evitando desaparecimento por airspace;
+- busca mais compacta, com ícone e placeholder;
+- navegação lateral sem scrollbar visual intrusiva;
+- lista de canais sem rolagem horizontal e rodapé resistente a overflow;
+- densidade e superfícies refinadas sem alterar o pipeline de reprodução.
 
 ## Cinema OS 8
 

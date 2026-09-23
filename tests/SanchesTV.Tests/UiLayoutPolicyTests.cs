@@ -46,4 +46,47 @@ public sealed class UiLayoutPolicyTests
         Assert.True(layout.SearchWidth > 0);
         Assert.True(layout.ContentMargin >= 0);
     }
+
+    [Fact]
+    public void Medium_Layout_Protects_Player_Hero_Area_On_1366x768()
+    {
+        const double windowWidth = 1366;
+        var layout = UiLayoutPolicy.Resolve(windowWidth, 768);
+
+        Assert.Equal(UiLayoutMode.Medium, layout.Mode);
+        Assert.InRange(layout.NavigationWidth, 188, 196);
+        Assert.InRange(layout.ChannelWidth, 320, 340);
+        Assert.InRange(layout.SearchWidth, 250, 280);
+
+        var estimatedPlayerWidth =
+            windowWidth -
+            layout.NavigationWidth -
+            layout.ChannelWidth -
+            (layout.ContentMargin * 2) -
+            12;
+
+        Assert.True(estimatedPlayerWidth >= 790,
+            $"Expected at least 790px for the player hero area, got {estimatedPlayerWidth:N0}px.");
+    }
+
+    [Fact]
+    public void Wide_Layout_Keeps_Search_Compact_And_Player_Dominant()
+    {
+        const double windowWidth = 1536;
+        var layout = UiLayoutPolicy.Resolve(windowWidth, 864);
+
+        Assert.Equal(UiLayoutMode.Wide, layout.Mode);
+        Assert.InRange(layout.SearchWidth, 280, 330);
+        Assert.InRange(layout.ChannelWidth, 350, 390);
+
+        var estimatedPlayerWidth =
+            windowWidth -
+            layout.NavigationWidth -
+            layout.ChannelWidth -
+            (layout.ContentMargin * 2) -
+            12;
+
+        Assert.True(estimatedPlayerWidth >= 900,
+            $"Expected at least 900px for the player hero area, got {estimatedPlayerWidth:N0}px.");
+    }
 }

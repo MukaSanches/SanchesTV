@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 8.0 • Cinema OS"
+        Title="SanchesTV 8.1 • Cinema OS Refined"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -84,7 +84,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="8.0 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="8.1 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -112,7 +112,7 @@
             <!-- Left navigation -->
             <Border x:Name="NavigationPanel" Grid.Column="0"
                     Background="#A811141B" BorderBrush="#20FFFFFF" BorderThickness="0,0,1,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                <ScrollViewer VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               PanningMode="VerticalOnly">
                     <StackPanel Margin="10,14,10,14">
@@ -222,7 +222,7 @@
                                 <StackPanel VerticalAlignment="Center" MaxWidth="700">
                                     <Border Background="#26FFFFFF" CornerRadius="12" Padding="10,5"
                                             HorizontalAlignment="Left" Margin="0,0,0,14">
-                                        <TextBlock Text="SANCHES TV 8 • CINEMA OS" FontSize="10"
+                                        <TextBlock Text="SANCHES TV 8.1 • CINEMA OS" FontSize="10"
                                                    FontWeight="Bold" Foreground="#D8E6FF"/>
                                     </Border>
                                     <TextBlock Text="Sua TV evoluiu para uma plataforma de mídia inteligente."
@@ -405,9 +405,48 @@
                                            Foreground="#8F9BAD" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
-                        <TextBox x:Name="SearchBox" Grid.Column="1" Height="42"
-                                 TextChanged="SearchBox_TextChanged"
-                                 ToolTip="Buscar canal, categoria, país, estado ou região"/>
+                        <Border Grid.Column="1" Height="42"
+                                Background="#14181F28"
+                                BorderBrush="#32FFFFFF"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <Grid>
+                                <TextBlock FontFamily="Segoe Fluent Icons"
+                                           Text="&#xE721;"
+                                           Foreground="#8FA1B8"
+                                           FontSize="14"
+                                           Margin="13,0,0,0"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"/>
+                                <TextBox x:Name="SearchBox"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="36,10,12,10"
+                                         Height="42"
+                                         TextChanged="SearchBox_TextChanged"
+                                         ToolTip="Buscar canal, categoria, país, estado ou região"/>
+                                <TextBlock Text="Buscar canais, esportes, filmes..."
+                                           Foreground="#728096"
+                                           Margin="38,0,10,0"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
                     </Grid>
 
                     <Grid x:Name="BrowseContentGrid" Grid.Row="1">
@@ -428,6 +467,8 @@
                                          Background="Transparent" Foreground="White"
                                          BorderThickness="0"
                                          ScrollViewer.CanContentScroll="True"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
                                          VirtualizingPanel.IsVirtualizing="True"
                                          VirtualizingPanel.VirtualizationMode="Recycling"
                                          MouseDoubleClick="ChannelList_MouseDoubleClick"
@@ -495,10 +536,17 @@
 
                                 <Border Grid.Row="1" BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0"
                                         Padding="6,8,6,2">
-                                    <DockPanel>
-                                        <TextBlock x:Name="CountText" Foreground="#8B96A8"
-                                                   VerticalAlignment="Center"/>
-                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="CountText"
+                                                   Foreground="#8B96A8"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Margin="2,0,8,0"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
                                             <Button Style="{StaticResource ModernButton}" Content="★"
                                                     ToolTip="Favorito" Click="ToggleFavorite_Click"/>
                                             <Button Style="{StaticResource ModernButton}" Content="+ TV"
@@ -506,7 +554,7 @@
                                             <Button Style="{StaticResource ModernButton}" Content="✓"
                                                     ToolTip="Testar fontes" Click="HealthCheck_Click"/>
                                         </StackPanel>
-                                    </DockPanel>
+                                    </Grid>
                                 </Border>
                             </Grid>
                         </Border>
@@ -515,6 +563,7 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
@@ -525,62 +574,94 @@
                                             Background="#01000000"
                                             MouseLeftButtonDown="VideoSurface_MouseLeftButtonDown"
                                             ToolTip="Duplo clique para tela cheia"/>
-                                    <Border HorizontalAlignment="Left" VerticalAlignment="Top"
-                                            Margin="18" Padding="12,9" CornerRadius="10"
-                                            Background="#B012151B">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Ellipse Width="7" Height="7" Fill="#FF405A" Margin="0,0,7,0"/>
-                                            <TextBlock Text="AO VIVO" FontWeight="Bold" FontSize="10"/>
-                                        </StackPanel>
-                                    </Border>
+                                </Grid>
 
-                                    <Border Background="#C20A0C10" HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Bottom" Padding="18,14">
+                                <Grid Grid.Row="1">
+                                    <Border x:Name="PlayerInfoBar"
+                                            Background="#F014171D"
+                                            BorderBrush="#20FFFFFF"
+                                            BorderThickness="0,1,0,0"
+                                            Padding="14,9">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Border Width="50" Height="50" Background="#22FFFFFF"
-                                                    CornerRadius="10">
+                                            <Border Background="#24FF405A"
+                                                    BorderBrush="#44FF405A"
+                                                    BorderThickness="1"
+                                                    CornerRadius="9"
+                                                    Padding="9,5"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,10,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="7" Height="7" Fill="#FF405A" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="AO VIVO" FontWeight="Bold" FontSize="10"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Grid.Column="1" Width="46" Height="46"
+                                                    Background="#1FFFFFFF"
+                                                    CornerRadius="10"
+                                                    Margin="0,0,10,0">
                                                 <Grid>
                                                     <TextBlock x:Name="PlayerInitialText" Text="S"
-                                                               FontSize="18" FontWeight="Bold"
+                                                               FontSize="17" FontWeight="Bold"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                Foreground="#7C8DA5"/>
                                                     <Image x:Name="PlayerLogo" Stretch="Uniform" Margin="7"/>
                                                 </Grid>
                                             </Border>
-                                            <StackPanel Grid.Column="1" Margin="12,0,10,0"
-                                                        VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0">
                                                 <TextBlock x:Name="NowPlayingText" Text="Selecione um canal"
-                                                           FontSize="17" FontWeight="SemiBold"/>
-                                                <TextBlock x:Name="NowEpgText" Foreground="#C4CCD8"
-                                                           FontSize="11" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock x:Name="NextEpgText" Foreground="#7F8B9E"
-                                                           FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                                           FontSize="16" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock x:Name="NowEpgText"
+                                                           Foreground="#C4CCD8"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock x:Name="NextEpgText"
+                                                           Foreground="#78869A"
+                                                           FontSize="10"
+                                                           TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                            <Border Grid.Column="2" Background="#25FFFFFF"
-                                                    CornerRadius="9" Padding="10,6"
-                                                    VerticalAlignment="Center">
+                                            <Border Grid.Column="3"
+                                                    Background="#20FFFFFF"
+                                                    BorderBrush="#24FFFFFF"
+                                                    BorderThickness="1"
+                                                    CornerRadius="9"
+                                                    Padding="10,6"
+                                                    VerticalAlignment="Center"
+                                                    MaxWidth="210">
                                                 <TextBlock x:Name="SourceBadgeText" Text="PRONTO"
-                                                           FontSize="9" FontWeight="Bold"
-                                                           Foreground="#B7C5D9"/>
+                                                           FontSize="9"
+                                                           FontWeight="Bold"
+                                                           Foreground="#B7C5D9"
+                                                           TextTrimming="CharacterEllipsis"/>
                                             </Border>
                                         </Grid>
                                     </Border>
-
-                                    <Border x:Name="LoadingOverlay" Background="#B0000000" Visibility="Collapsed">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <ProgressBar IsIndeterminate="True" Width="260" Height="4"/>
-                                            <TextBlock x:Name="LoadingText" Text="Carregando..."
-                                                       HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                                    <Border x:Name="LoadingOverlay"
+                                            Background="#FA14171D"
+                                            Visibility="Collapsed">
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Margin="16,12">
+                                            <ProgressBar IsIndeterminate="True"
+                                                         Width="120"
+                                                         Height="4"
+                                                         Margin="0,0,12,0"/>
+                                            <TextBlock x:Name="LoadingText"
+                                                       Text="Carregando..."
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C7D0DD"/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
 
-                                <Border x:Name="PlayerCommandBar" Grid.Row="1"
+                                <Border x:Name="PlayerCommandBar" Grid.Row="2"
                                         Background="#F0161A22" Padding="7"
                                         BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0">
                                     <StackPanel>

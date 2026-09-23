@@ -1335,7 +1335,7 @@ public partial class MainWindow : Window
 
         var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 8.0.0\n" +
+            $"SanchesTV: 8.1.0\n" +
             $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
             $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
