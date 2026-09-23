@@ -51,10 +51,10 @@ public static class UiLayoutPolicy
         if (width < 1400)
             return new(
                 UiLayoutMode.Medium,
-                176,
-                Math.Clamp(width * 0.27, 290, 350),
-                Math.Clamp(width * 0.23, 220, 300),
-                14,
+                192,
+                Math.Clamp(width * 0.245, 320, 336),
+                Math.Clamp(width * 0.20, 250, 276),
+                12,
                 true,
                 false,
                 true,
@@ -63,10 +63,10 @@ public static class UiLayoutPolicy
         if (width < 1800)
             return new(
                 UiLayoutMode.Wide,
-                208,
-                Math.Clamp(width * 0.25, 360, 420),
-                Math.Clamp(width * 0.22, 300, 370),
-                18,
+                200,
+                Math.Clamp(width * 0.235, 350, 380),
+                Math.Clamp(width * 0.20, 280, 320),
+                16,
                 true,
                 false,
                 true,
@@ -74,10 +74,10 @@ public static class UiLayoutPolicy
 
         return new(
             UiLayoutMode.UltraWide,
-            228,
-            440,
-            400,
-            22,
+            216,
+            410,
+            360,
+            18,
             true,
             false,
             true,
