@@ -16,7 +16,7 @@ public sealed class CommandPaletteWindow : Window
     public CommandPaletteWindow(IEnumerable<CommandPaletteAction> actions)
     {
         _actions = actions.ToArray();
-        Title = "SanchesTV 8 Command Center";
+        Title = "SanchesTV 8.1 Command Center";
         Width = 680;
         Height = 520;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -33,7 +33,7 @@ public sealed class CommandPaletteWindow : Window
 
         var title = new TextBlock
         {
-            Text = "SANCHES TV 8 • COMMAND CENTER",
+            Text = "SANCHES TV 8.1 • COMMAND CENTER",
             FontSize = 22,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 14)
