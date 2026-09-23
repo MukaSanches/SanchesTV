@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>SanchesTV</AssemblyName>
     <RootNamespace>SanchesTV.Desktop</RootNamespace>
-    <Version>7.0.1</Version>
+    <Version>8.0.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>SanchesTV.Desktop.Program</StartupObject>
   </PropertyGroup>

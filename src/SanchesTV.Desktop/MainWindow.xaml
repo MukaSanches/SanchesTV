@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 7.0.1"
+        Title="SanchesTV 8.0 • Cinema OS"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -84,7 +84,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="7.0.1 • Media Platform" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="8.0 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -95,6 +95,7 @@
                 </Border>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource CaptionButton}" Content="&#xE721;" Click="CommandPalette_Click" ToolTip="Command Center • Ctrl+K"/>
                     <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Minimize_Click"/>
                     <Button Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="Maximize_Click"/>
                     <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Content="&#xE8BB;" Click="Close_Click"/>
@@ -193,7 +194,7 @@
                         </UniformGrid>
                         <Button Style="{StaticResource ModernButton}" Content="◉ Streaming P2P"
                                 Click="P2p_Click" Margin="5,2" ToolTip="Assistir magnet ou .torrent autorizado sem esperar o download completo"/>
-                        <Button Style="{StaticResource ModernButton}" Content="◈ Media Lab 7"
+                        <Button Style="{StaticResource ModernButton}" Content="◈ Media Lab 8"
                                 Click="MediaLab_Click" Margin="5,2" ToolTip="Roteamento, broadcast, diagnóstico, legendas e transcrição local"/>
                         <Button Style="{StaticResource ModernButton}" Content="▤ Guia / gravações"
                                 Click="EpgGuide_Click" Margin="5,2" ToolTip="Guia de programação e gravação agendada"/>
@@ -221,13 +222,13 @@
                                 <StackPanel VerticalAlignment="Center" MaxWidth="700">
                                     <Border Background="#26FFFFFF" CornerRadius="12" Padding="10,5"
                                             HorizontalAlignment="Left" Margin="0,0,0,14">
-                                        <TextBlock Text="SANCHES TV • WINDOWS 11" FontSize="10"
+                                        <TextBlock Text="SANCHES TV 8 • CINEMA OS" FontSize="10"
                                                    FontWeight="Bold" Foreground="#D8E6FF"/>
                                     </Border>
-                                    <TextBlock Text="Toda a sua TV, agora com cara de cinema."
+                                    <TextBlock Text="Sua TV evoluiu para uma plataforma de mídia inteligente."
                                                FontSize="38" FontWeight="Bold" TextWrapping="Wrap"
                                                LineHeight="44"/>
-                                    <TextBlock Text="Canais ao vivo, filmes, conteúdo em português e suas fontes premium oficiais em uma central rápida, visual e organizada."
+                                    <TextBlock Text="Playback inteligente, P2P, timeshift, gravação e ferramentas profissionais em uma experiência mais rápida, resiliente e cinematográfica."
                                                FontSize="15" Foreground="#C8D0DE" TextWrapping="Wrap"
                                                Margin="0,14,0,20" MaxWidth="650"/>
                                     <StackPanel Orientation="Horizontal">
