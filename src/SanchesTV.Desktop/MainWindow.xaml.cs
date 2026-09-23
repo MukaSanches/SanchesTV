@@ -1487,6 +1487,10 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
+        _searchFilterCts?.Cancel();
+        _searchFilterCts?.Dispose();
+        _searchFilterCts = null;
+
         if (_remote is not null)
             await _remote.DisposeAsync();
 

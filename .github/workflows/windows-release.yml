@@ -189,7 +189,7 @@ jobs:
           $sha = ".\artifacts\installer\SanchesTV-Setup-8.0.0-x64.exe.sha256"
           gh release view v8.0.0 --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create v8.0.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.0.0" --notes "SanchesTV 8.0.0 Media Platform para Windows x64. Consolida Cinema Engine avançado, P2P resiliente, timeshift, EPG e gravação agendada, MediaMTX multi-protocolo, DLNA, TSDuck, CCExtractor, whisper.cpp offline, ONNX Runtime, processamento FFmpeg avançado, telemetria local, adaptação por hardware e Velopack com updates delta. Inclui limpeza final de warnings do Media Lab. O pipeline valida build, testes, runtimes, self-test, instalação limpa Inno e instalação limpa Velopack."
+            gh release create v8.0.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.0.0" --notes "SanchesTV 8.0.0 Cinema OS para Windows x64. Introduz Playback Intelligence com ranking local de fontes por saúde e TTFF, failover centralizado libmpv → LibVLC, Command Center Ctrl+K, busca com debounce e nova identidade visual Cinema OS. Preserva P2P resiliente, timeshift, EPG, gravação agendada, Media Lab, MediaMTX, DLNA, TSDuck, CCExtractor, whisper.cpp offline, ONNX Runtime, FFmpeg avançado, telemetria local e Velopack com updates delta. O histórico de saúde não persiste query strings, headers ou tokens. O pipeline valida build, testes, runtimes, self-test, instalação limpa Inno e instalação limpa Velopack."
           }
           gh release upload v8.0.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
           Get-ChildItem ".\artifacts\velopack" -File | ForEach-Object {

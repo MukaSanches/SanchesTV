@@ -1,8 +1,18 @@
-# SanchesTV 7.0.1 — Media Platform
+# SanchesTV 8.0.0 — Cinema OS
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 
-A V7.0.1 preserva a base estável da linha 6.x e acrescenta módulos isolados para vídeo avançado, áudio, broadcast, gravação, transmissão para outros dispositivos, processamento offline e atualização incremental.
+A V8.0.0 preserva a plataforma multimídia da linha 7.x e inicia o **Cinema OS**: uma evolução de experiência, resiliência e inteligência local de playback sem remover os módulos já existentes.
+
+## Cinema OS 8
+
+- **Playback Intelligence**: fontes são ordenadas por status, prioridade, latência, taxa histórica de sucesso, falhas consecutivas e tempo médio até iniciar (TTFF);
+- **failover centralizado**: libmpv continua preferencial e LibVLC assume automaticamente quando necessário;
+- **memória local de saúde**: o histórico usa uma identidade SHA-256 e não persiste query strings, headers ou tokens;
+- **Command Center** global com `Ctrl+K`;
+- busca com debounce/cancelamento para evitar refiltragens desnecessárias a cada tecla;
+- diagnóstico ampliado com resumo do aprendizado de playback;
+- identidade visual **Cinema OS** preservando responsividade, P2P, timeshift, gravação, EPG, Media Lab e demais recursos da V7.
 
 ## Cinema Engine
 
@@ -54,7 +64,7 @@ O SanchesTV não inclui indexadores de torrents. O módulo é destinado a conte�
 - persistência das gravações agendadas no SQLite;
 - execução automática do agendador em segundo plano.
 
-## Media Lab 7
+## Media Lab 8
 
 O Media Lab concentra as ferramentas avançadas sem acoplar processos pesados ao player.
 
@@ -131,7 +141,7 @@ TagLibSharp permite inspecionar metadados de mídia local; FFprobe fornece a par
 
 ## Atualização
 
-A V7 possui duas formas de instalação:
+A V8 possui duas formas de instalação:
 
 1. **Velopack** — instalador principal, com suporte a pacote completo e atualizações delta via GitHub Releases.
 2. **Inno Setup** — instalador tradicional de recuperação/compatibilidade.

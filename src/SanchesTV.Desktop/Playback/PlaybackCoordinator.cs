@@ -48,7 +48,8 @@ public sealed class PlaybackCoordinator
                 catch (OperationCanceledException) { throw; }
                 catch
                 {
-                    foreach (var source in ordered) _health.RecordFailure(source);
+                    // Falha do engine mpv não prova que as fontes estão ruins.
+                    // O mesmo conjunto ainda será testado no LibVLC antes de penalizar o histórico.
                     try { await _mpv.StopAsync(cancellationToken); } catch { }
                 }
             }
