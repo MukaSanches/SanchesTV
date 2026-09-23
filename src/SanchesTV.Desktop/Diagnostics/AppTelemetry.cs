@@ -49,7 +49,7 @@ public static class AppTelemetry
             .Build();
 
         _initialized = true;
-        Info("app.start", new { version = "7.0.1", os = Environment.OSVersion.VersionString });
+        Info("app.start", new { version = "8.1.0", os = Environment.OSVersion.VersionString });
     }
 
     public static IDisposable? StartActivity(string name)
