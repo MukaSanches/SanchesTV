@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Color x:Key="AccentColor">#8B5CF6</Color>
     <Color x:Key="Accent2Color">#22D3EE</Color>
-    <Color x:Key="SurfaceColor">#CC12151C</Color>
-    <Color x:Key="Surface2Color">#D91A1E27</Color>
+    <Color x:Key="SurfaceColor">#F012151C</Color>
+    <Color x:Key="Surface2Color">#F0181C24</Color>
     <Color x:Key="StrokeColor">#38FFFFFF</Color>
     <Color x:Key="MutedColor">#FFA1AAB8</Color>
 
@@ -28,8 +28,8 @@
 
     <Style x:Key="ModernButton" TargetType="Button">
         <Setter Property="Foreground" Value="White"/>
-        <Setter Property="Background" Value="#28FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#32FFFFFF"/>
+        <Setter Property="Background" Value="#1FFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#2AFFFFFF"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="14,9"/>
         <Setter Property="Margin" Value="3"/>
@@ -47,7 +47,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#3DFFFFFF"/>
+                            <Setter TargetName="Bg" Property="Background" Value="#32FFFFFF"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bg" Property="Opacity" Value="0.72"/>
@@ -108,7 +108,7 @@
 
     <Style TargetType="TextBox">
         <Setter Property="Foreground" Value="White"/>
-        <Setter Property="Background" Value="#55FFFFFF"/>
+        <Setter Property="Background" Value="#18FFFFFF"/>
         <Setter Property="BorderBrush" Value="#25FFFFFF"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="12,9"/>
@@ -131,7 +131,7 @@
     <Style TargetType="ToolTip">
         <Setter Property="Background" Value="#EE20242D"/>
         <Setter Property="Foreground" Value="White"/>
-        <Setter Property="BorderBrush" Value="#32FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#2AFFFFFF"/>
         <Setter Property="Padding" Value="8"/>
     </Style>
 
