@@ -15,6 +15,7 @@ using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Core.Search;
+using SanchesTV.Core.Orchestration;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.P2P;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
     private readonly VlcPlaybackEngine _vlc = new();
     private readonly MpvPlaybackEngine _mpv = new();
     private readonly SourceHealthLedger _sourceHealth = new();
+    private readonly DurableWorkflowOrchestrator _workflowOrchestrator = new();
     private readonly PlaybackCoordinator _playbackCoordinator;
     private CancellationTokenSource? _searchFilterCts;
     private readonly FfmpegRecorder _recorder = new();
@@ -71,6 +73,16 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _playbackCoordinator = new PlaybackCoordinator(_mpv, _vlc, EnsureMpvReadyAsync, _sourceHealth);
+        _workflowOrchestrator.EventPublished += (_, evt) =>
+            AppTelemetry.Info("workflow.event", new
+            {
+                evt.RunId,
+                evt.WorkflowName,
+                evt.TaskName,
+                workflowStatus = evt.WorkflowStatus.ToString(),
+                taskStatus = evt.TaskStatus?.ToString(),
+                evt.Message
+            });
         _mediaRouter = new MediaRouterService(_mediaTools);
         _recordingScheduler = new RecordingSchedulerService(_db);
         _recordingScheduler.StatusChanged += (_, message) => Dispatcher.Invoke(() =>
@@ -245,7 +257,7 @@ public partial class MainWindow : Window
                 DateTimeOffset.UtcNow - last < TimeSpan.FromHours(12))
                 return;
 
-            await SyncCatalogAsync(false);
+            await RunCatalogWorkflowAsync(false);
         }
         catch (Exception ex)
         {
@@ -254,7 +266,40 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SyncCatalogAsync(bool showResult)
+    private async Task RunCatalogWorkflowAsync(bool showResult)
+    {
+        var definition = new WorkflowDefinition(
+            "catalog-sync",
+            1,
+            [
+                new WorkflowTaskDefinition(
+                    "download-normalize-persist",
+                    _ => SyncCatalogCoreAsync(showResult, throwOnFailure: true),
+                    MaxAttempts: 3,
+                    Timeout: TimeSpan.FromMinutes(3),
+                    RetryDelay: TimeSpan.FromSeconds(3),
+                    MaxRetryDelay: TimeSpan.FromSeconds(12),
+                    RetryJitterMilliseconds: 750)
+            ],
+            MaxConcurrency: 1);
+
+        try
+        {
+            var runId = $"catalog-sync-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}";
+            await _workflowOrchestrator.RunAsync(definition, runId);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Falha ao atualizar catálogo após recuperação automática: {ex.Message}";
+            TitleStatusText.Text = "Atualização incompleta";
+            SetBusy(false);
+
+            if (showResult)
+                MessageBox.Show(this, ex.Message, "Catálogo", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task SyncCatalogCoreAsync(bool showResult, bool throwOnFailure = false)
     {
         if (_catalogSyncRunning)
             return;
@@ -306,8 +351,10 @@ public partial class MainWindow : Window
         {
             StatusText.Text = $"Falha ao atualizar catálogo: {ex.Message}";
             TitleStatusText.Text = "Atualização incompleta";
-            if (showResult)
+            if (!throwOnFailure && showResult)
                 MessageBox.Show(this, ex.Message, "Catálogo", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (throwOnFailure)
+                throw;
         }
         finally
         {
@@ -598,7 +645,7 @@ public partial class MainWindow : Window
             new CommandPaletteAction("Ao vivo", "Todos os canais", () => ShowBrowseAsync("all", "Ao vivo", "Todos os canais disponíveis no catálogo local.")),
             new CommandPaletteAction("Filmes", "Cinema e filmes", () => ShowBrowseAsync("movies", "Filmes", "Playlist Movies do IPTV-org e canais classificados como cinema/filmes.")),
             new CommandPaletteAction("Favoritos", "Sua biblioteca", () => ShowBrowseAsync("favorites", "Favoritos", "Seus canais marcados como favoritos.")),
-            new CommandPaletteAction("Atualizar catálogo", "Sincronizar fontes", () => SyncCatalogAsync(true)),
+            new CommandPaletteAction("Atualizar catálogo", "Sincronizar fontes", () => RunCatalogWorkflowAsync(true)),
             new CommandPaletteAction("P2P", "Streaming progressivo", () => { P2p_Click(this, new RoutedEventArgs()); return Task.CompletedTask; }),
             new CommandPaletteAction("Media Lab", "Ferramentas profissionais", () => { MediaLab_Click(this, new RoutedEventArgs()); return Task.CompletedTask; }),
             new CommandPaletteAction("Diagnóstico", "Saúde da plataforma", () => { Diagnostics_Click(this, new RoutedEventArgs()); return Task.CompletedTask; }),
@@ -637,7 +684,7 @@ public partial class MainWindow : Window
     }
 
     private async void SyncPortugueseCatalog_Click(object sender, RoutedEventArgs e) =>
-        await SyncCatalogAsync(true);
+        await RunCatalogWorkflowAsync(true);
 
     private void MediaLab_Click(object sender, RoutedEventArgs e)
     {
