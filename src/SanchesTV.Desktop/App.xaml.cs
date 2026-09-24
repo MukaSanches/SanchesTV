@@ -12,6 +12,7 @@ using SanchesTV.Core.P2P;
 using SanchesTV.Desktop.Diagnostics;
 using SanchesTV.Desktop.Tools;
 using SanchesTV.Core.Search;
+using SanchesTV.Core.Orchestration;
 
 namespace SanchesTV.Desktop;
 
@@ -26,7 +27,7 @@ public partial class App : Application
             AppTelemetry.Error("app.unhandled", args.Exception);
             MessageBox.Show(
                 "O SanchesTV encontrou um erro inesperado e registrou um diagnóstico local.\n\n" + args.Exception.Message,
-                "SanchesTV 8",
+                "SanchesTV 8.2",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
@@ -107,6 +108,40 @@ internal static class SelfTest
 
             if (!FuzzyMatcher.IsMatch("glbo", "Globo"))
                 return 26;
+
+            var workflowDir = Path.Combine(Path.GetTempPath(), $"sanchestv-workflow-selftest-{Guid.NewGuid():N}");
+            var workflow = new DurableWorkflowOrchestrator(workflowDir);
+            var flakyAttempts = 0;
+            var workflowResult = await workflow.RunAsync(
+                new WorkflowDefinition(
+                    "self-test",
+                    1,
+                    [
+                        new WorkflowTaskDefinition("seed", _ => Task.CompletedTask, MaxAttempts: 1),
+                        new WorkflowTaskDefinition(
+                            "retry",
+                            _ =>
+                            {
+                                if (Interlocked.Increment(ref flakyAttempts) == 1)
+                                    throw new InvalidOperationException("transient-self-test");
+                                return Task.CompletedTask;
+                            },
+                            ["seed"],
+                            MaxAttempts: 2,
+                            RetryDelay: TimeSpan.FromMilliseconds(1),
+                            MaxRetryDelay: TimeSpan.FromMilliseconds(2),
+                            RetryJitterMilliseconds: 0),
+                        new WorkflowTaskDefinition("parallel", _ => Task.CompletedTask, ["seed"], MaxAttempts: 1),
+                        new WorkflowTaskDefinition("join", _ => Task.CompletedTask, ["retry", "parallel"], MaxAttempts: 1)
+                    ],
+                    MaxConcurrency: 4),
+                "self-test-run");
+
+            if (workflowResult.Status != WorkflowRunStatus.Completed ||
+                workflowResult.Tasks["retry"].Attempts != 2)
+                return 27;
+
+            try { Directory.Delete(workflowDir, true); } catch { }
 
             var tools = new MediaToolsService();
             if (!File.Exists(tools.MediaMtxPath) ||

@@ -14,7 +14,7 @@ $ffmpegSha = "c42179573d9d50cc22c547eba21690b5cd2d131e01f892fa6cb9432a774cf2a8"
 # ffprobe separado e estático (LGPL) para diagnóstico Cinema OS.
 # Mantemos o FFmpeg atual do mpv-winbuild para não alterar o runtime de gravação/player.
 $ffprobeUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-9.0.zip"
-$ffprobeSha = "424298f2283c9cd090d63725b89c8f494dd4a377b322a4bb48ef500ee5cf3fd3"
+$ffprobeSha = "378bf8231e6c10a2578ed1f96dcdfc2186c3d5d64582836e89083a1af838a646"
 
 
 $work = Join-Path $env:RUNNER_TEMP "sanchestv-media-runtime"
@@ -71,7 +71,7 @@ $licenseDir = Join-Path $PublishDir "licenses\media-runtime"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 
 $provenance = @"
-SanchesTV 8.1 media runtime
+SanchesTV 8.2 media runtime
 
 libmpv package:
 $mpvUrl
