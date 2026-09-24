@@ -27,7 +27,7 @@ public partial class App : Application
             AppTelemetry.Error("app.unhandled", args.Exception);
             MessageBox.Show(
                 "O SanchesTV encontrou um erro inesperado e registrou um diagnóstico local.\n\n" + args.Exception.Message,
-                "SanchesTV 8",
+                "SanchesTV 8.2",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
