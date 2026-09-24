@@ -1,8 +1,25 @@
-# SanchesTV 8.1.0 — Cinema OS Refined
+# SanchesTV 8.2.0 — Cinema OS Orchestrated
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 
-A V8.1.0 preserva integralmente a plataforma multimídia e o Playback Intelligence da V8 e refina o **Cinema OS** com uma composição player-first, busca compacta, navegação mais limpa e uma solução específica para o airspace do libmpv: informações críticas do canal ficam fora da superfície HWND nativa e permanecem visíveis tanto em mpv quanto em LibVLC.
+A V8.2.0 preserva integralmente a plataforma multimídia e o Playback Intelligence da V8.1 e adiciona uma camada de **orquestração durável local**, inspirada nos padrões arquiteturais do Netflix Conductor, sem embutir o servidor Java do Conductor no aplicativo.
+
+
+## Orquestração durável 8.2
+
+A SanchesTV agora possui um motor local de workflows em C# para tarefas de manutenção e integração. Ele segue os princípios de execução durável popularizados pelo Netflix Conductor, adaptados ao desktop Windows:
+
+- workflows versionados com tarefas e dependências explícitas;
+- DAG com execução paralela e comportamento fork/join;
+- estado persistido após cada transição para permitir retomada;
+- retries automáticos com backoff exponencial, limite de atraso e jitter;
+- timeout por tarefa e cancelamento cooperativo;
+- histórico de tentativas, falhas e timestamps;
+- eventos de workflow enviados para a telemetria local;
+- workers idempotentes e separados da lógica de orquestração;
+- self-test empacotado que força uma falha transitória e valida retry, paralelismo e join.
+
+A sincronização do catálogo é o primeiro workload real conectado ao motor: uma falha transitória pode ser recuperada automaticamente antes de a atualização ser marcada como incompleta. O player permanece fora desse caminho para não adicionar latência à reprodução.
 
 ## Cinema OS 8.1 — Refined
 
