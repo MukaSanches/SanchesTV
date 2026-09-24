@@ -90,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer\SanchesTV.iss"
-          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe")) {
+          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe")) {
             throw "Installer was not generated."
           }
 
@@ -99,7 +99,7 @@ jobs:
         run: |
           $installDir = Join-Path $env:RUNNER_TEMP "SanchesTV-CleanInstall"
           New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe"
+          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe"
           $process = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$installDir" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer returned $($process.ExitCode)" }
 
@@ -121,8 +121,8 @@ jobs:
       - name: SHA-256
         shell: pwsh
         run: |
-          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe" -Algorithm SHA256).Hash
-          "$hash  SanchesTV-Setup-8.1.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe.sha256" -Encoding ascii
+          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe" -Algorithm SHA256).Hash
+          "$hash  SanchesTV-Setup-8.2.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe.sha256" -Encoding ascii
           Write-Host "SHA256=$hash"
 
       - name: Install Velopack CLI
@@ -133,7 +133,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ".\artifacts\velopack" | Out-Null
-          vpk pack -u SanchesTV -v 8.1.0 -o ".\artifacts\velopack" -p ".\artifacts\publish" -e SanchesTV.exe --packTitle "SanchesTV" --packAuthors "SanchesTV"
+          vpk pack -u SanchesTV -v 8.2.0 -o ".\artifacts\velopack" -p ".\artifacts\publish" -e SanchesTV.exe --packTitle "SanchesTV" --packAuthors "SanchesTV"
           if ($LASTEXITCODE -ne 0) { throw "Velopack packaging failed." }
           if (-not (Test-Path ".\artifacts\velopack\SanchesTV-win-Setup.exe")) { throw "Velopack Setup missing." }
           if (-not (Test-Path ".\artifacts\velopack\releases.win.json")) { throw "Velopack release feed missing." }
@@ -172,10 +172,10 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: SanchesTV-Setup-8.1.0-x64
+          name: SanchesTV-Setup-8.2.0-x64
           path: |
-            artifacts/installer/SanchesTV-Setup-8.1.0-x64.exe
-            artifacts/installer/SanchesTV-Setup-8.1.0-x64.exe.sha256
+            artifacts/installer/SanchesTV-Setup-8.2.0-x64.exe
+            artifacts/installer/SanchesTV-Setup-8.2.0-x64.exe.sha256
             artifacts/velopack/*
           if-no-files-found: error
 
@@ -185,14 +185,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $exe = ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe"
-          $sha = ".\artifacts\installer\SanchesTV-Setup-8.1.0-x64.exe.sha256"
-          gh release view v8.1.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          $exe = ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe"
+          $sha = ".\artifacts\installer\SanchesTV-Setup-8.2.0-x64.exe.sha256"
+          gh release view v8.2.0 --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create v8.1.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.1.0" --notes "SanchesTV 8.1.0 Cinema OS Refined para Windows x64. Refina a interface com player-first layout, busca compacta, navegação sem barras intrusivas, lista de canais sem rolagem horizontal e metadados do canal fora da superfície HWND do libmpv para permanecerem visíveis em mpv e LibVLC. Preserva Playback Intelligence, failover centralizado, P2P, timeshift, EPG, gravação, Media Lab, MediaMTX, DLNA, TSDuck, CCExtractor, whisper.cpp offline, ONNX Runtime, FFmpeg avançado, telemetria local e Velopack. O pipeline valida build, testes, runtimes, self-test, instalação limpa Inno e instalação limpa Velopack."
+            gh release create v8.2.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.2.0" --notes "SanchesTV 8.2.0 Cinema OS + Durable Orchestration para Windows x64. Adiciona um motor de workflows inspirado na arquitetura Apache-2.0 do Netflix Conductor, adaptado nativamente para C#: estado durável em SQLite/WAL, snapshots versionados, histórico de eventos, retries fixo/linear/exponencial com jitter, timeouts, tarefas opcionais, DAG fork/join, limites de concorrência, correlation IDs, recuperação após reinício, pause/resume, terminate, restart, retry e rerun parcial. A inicialização do app passa pelo novo motor sem substituir o pipeline de reprodução. Preserva Playback Intelligence, libmpv/LibVLC, P2P, timeshift, EPG, gravação, Media Lab, telemetria local e Velopack. O pipeline valida build, testes, runtimes, self-test, instalação limpa Inno e instalação limpa Velopack."
           }
-          gh release upload v8.1.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
+          gh release upload v8.2.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
           Get-ChildItem ".\artifacts\velopack" -File | ForEach-Object {
-            gh release upload v8.1.0 $_.FullName --clobber --repo "$env:GITHUB_REPOSITORY"
+            gh release upload v8.2.0 $_.FullName --clobber --repo "$env:GITHUB_REPOSITORY"
             if ($LASTEXITCODE -ne 0) { throw "Failed to upload $($_.Name)" }
           }
