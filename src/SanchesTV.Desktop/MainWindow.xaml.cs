@@ -73,7 +73,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _playbackCoordinator = new PlaybackCoordinator(_mpv, _vlc, EnsureMpvReadyAsync, _sourceHealth);
-        _workflowOrchestrator.EventPublished += (_, evt) =>
+        _workflowOrchestrator.EventPublished += evt =>
             AppTelemetry.Info("workflow.event", new
             {
                 evt.RunId,
