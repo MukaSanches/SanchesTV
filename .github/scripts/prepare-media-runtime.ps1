@@ -71,7 +71,7 @@ $licenseDir = Join-Path $PublishDir "licenses\media-runtime"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 
 $provenance = @"
-SanchesTV 8.1 media runtime
+SanchesTV 8.2 media runtime
 
 libmpv package:
 $mpvUrl
