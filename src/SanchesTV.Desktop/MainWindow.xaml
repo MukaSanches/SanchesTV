@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 8.1 • Cinema OS Refined"
+        Title="SanchesTV 8.2 • Cinema OS Refined"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -84,7 +84,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="8.1 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="8.2 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -222,7 +222,7 @@
                                 <StackPanel VerticalAlignment="Center" MaxWidth="700">
                                     <Border Background="#26FFFFFF" CornerRadius="12" Padding="10,5"
                                             HorizontalAlignment="Left" Margin="0,0,0,14">
-                                        <TextBlock Text="SANCHES TV 8.1 • CINEMA OS" FontSize="10"
+                                        <TextBlock Text="SANCHES TV 8.2 • CINEMA OS" FontSize="10"
                                                    FontWeight="Bold" Foreground="#D8E6FF"/>
                                     </Border>
                                     <TextBlock Text="Sua TV evoluiu para uma plataforma de mídia inteligente."
