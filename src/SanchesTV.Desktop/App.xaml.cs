@@ -12,6 +12,7 @@ using SanchesTV.Core.P2P;
 using SanchesTV.Desktop.Diagnostics;
 using SanchesTV.Desktop.Tools;
 using SanchesTV.Core.Search;
+using SanchesTV.Core.Orchestration;
 
 namespace SanchesTV.Desktop;
 
@@ -107,6 +108,36 @@ internal static class SelfTest
 
             if (!FuzzyMatcher.IsMatch("glbo", "Globo"))
                 return 26;
+
+            var workflowStore = new InMemoryWorkflowStateStore();
+            var workflowEngine = new DurableWorkflowEngine(workflowStore);
+            await workflowEngine.InitializeAsync();
+
+            var workflowAttempts = 0;
+            workflowEngine.RegisterHandler("selftest.retry", (_, _) =>
+            {
+                workflowAttempts++;
+                return Task.FromResult(
+                    workflowAttempts == 1
+                        ? WorkflowTaskResult.Failed("transient")
+                        : WorkflowTaskResult.Completed(new { ok = true }));
+            });
+
+            var workflow = await workflowEngine.StartAsync(
+                new WorkflowDefinition(
+                    "selftest.workflow",
+                    1,
+                    [
+                        new WorkflowTaskDefinition(
+                            "retry",
+                            "selftest.retry",
+                            RetryCount: 1,
+                            RetryDelay: TimeSpan.FromMilliseconds(1),
+                            UseJitter: false)
+                    ]));
+
+            if (workflow.Status != WorkflowExecutionStatus.Completed || workflowAttempts != 2)
+                return 27;
 
             var tools = new MediaToolsService();
             if (!File.Exists(tools.MediaMtxPath) ||
