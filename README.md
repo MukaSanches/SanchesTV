@@ -1,8 +1,29 @@
-# SanchesTV 8.1.0 — Cinema OS Refined
+# SanchesTV 8.2.0 — Cinema OS + Durable Orchestration
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 
-A V8.1.0 preserva integralmente a plataforma multimídia e o Playback Intelligence da V8 e refina o **Cinema OS** com uma composição player-first, busca compacta, navegação mais limpa e uma solução específica para o airspace do libmpv: informações críticas do canal ficam fora da superfície HWND nativa e permanecem visíveis tanto em mpv quanto em LibVLC.
+A V8.2.0 preserva integralmente a plataforma multimídia, o Playback Intelligence e o Cinema OS da V8.1 e adiciona um **motor local de orquestração durável** inspirado nos mecanismos públicos do Netflix Conductor, adaptado nativamente para C#/.NET e SQLite.
+
+## Durable Orchestration 8.2
+
+- workflows com nome e versão, com snapshot da definição preservado por execução;
+- estado persistente local em SQLite/WAL;
+- histórico de eventos por workflow e por tarefa;
+- estados Scheduled, InProgress, Completed, Failed, TimedOut, Canceled e CompletedWithErrors;
+- retry FIXED, LINEAR e EXPONENTIAL com jitter e limite de tentativas;
+- timeout por tarefa;
+- tarefas opcionais que podem falhar sem derrubar todo o fluxo;
+- DAG com dependências e execução paralela equivalente ao padrão fork/join;
+- limite de concorrência por tipo de tarefa;
+- correlation ID;
+- recuperação automática de tarefas interrompidas após reinício do processo;
+- pause/resume, terminate, restart, retry de falhas e rerun a partir de uma tarefa;
+- retenção configurável do histórico;
+- boot real do SanchesTV executado como workflow `database → seed → channels → home`;
+- sem JVM, Redis ou Elasticsearch dentro do aplicativo: o motor é local e mantém o player desacoplado.
+
+A implementação fica em `src/SanchesTV.Core/Orchestration` e sua arquitetura está documentada em `docs/CONDUCTOR_ENGINE.md`.
+
 
 ## Cinema OS 8.1 — Refined
 

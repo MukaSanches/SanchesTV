@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>SanchesTV</AssemblyName>
     <RootNamespace>SanchesTV.Desktop</RootNamespace>
-    <Version>8.1.0</Version>
+    <Version>8.2.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>SanchesTV.Desktop.Program</StartupObject>
   </PropertyGroup>
@@ -30,5 +30,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\licenses\MonoTorrent-LICENSE.txt" Link="licenses\MonoTorrent-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\licenses\Conductor-ARCHITECTURE-NOTICE.txt" Link="licenses\Conductor-ARCHITECTURE-NOTICE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

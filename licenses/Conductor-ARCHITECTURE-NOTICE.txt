@@ -1,0 +1,19 @@
+# Conductor architecture notice
+
+SanchesTV 8.2 contains a native C# durable-workflow engine whose design was informed by the
+open-source Netflix Conductor / Conductor OSS architecture.
+
+Upstream projects:
+- https://github.com/Netflix/conductor
+- https://github.com/conductor-oss/conductor
+
+The upstream Conductor project is distributed under the Apache License 2.0.
+
+The SanchesTV integration does not embed the Conductor Java server, Redis, Elasticsearch,
+or a copied Conductor runtime. The implementation in src/SanchesTV.Core/Orchestration is
+a C# adaptation of public workflow-engine concepts such as durable state, task state
+transitions, retries, timeout policies, DAG/fork-join execution, workflow versioning,
+recovery, replay operations and event history.
+
+This notice documents provenance and prevents the implementation from being represented as
+the original Netflix runtime.

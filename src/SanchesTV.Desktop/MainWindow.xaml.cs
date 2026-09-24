@@ -14,6 +14,7 @@ using SanchesTV.Core.Layout;
 using SanchesTV.Core.Models;
 using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
+using SanchesTV.Core.Orchestration;
 using SanchesTV.Core.Search;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
     };
 
     private readonly AppDatabase _db = new();
+    private readonly DurableWorkflowEngine _workflows = new(new SqliteWorkflowStateStore());
     private readonly HttpClient _http = new(new ResilientHttpHandler()) { Timeout = TimeSpan.FromSeconds(45) };
     private readonly VlcPlaybackEngine _vlc = new();
     private readonly MpvPlaybackEngine _mpv = new();
@@ -69,6 +71,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        RegisterWorkflowHandlers();
 
         _playbackCoordinator = new PlaybackCoordinator(_mpv, _vlc, EnsureMpvReadyAsync, _sourceHealth);
         _mediaRouter = new MediaRouterService(_mediaTools);
@@ -120,6 +124,77 @@ public partial class MainWindow : Window
 
         Loaded += MainWindow_Loaded;
     }
+
+    private void RegisterWorkflowHandlers()
+    {
+        _workflows.RegisterHandler("startup.database", async (_, cancellationToken) =>
+        {
+            await _db.InitializeAsync(cancellationToken);
+            return WorkflowTaskResult.Completed();
+        });
+
+        _workflows.RegisterHandler("startup.seed", async (_, cancellationToken) =>
+        {
+            var existing = await _db.GetChannelsAsync(cancellationToken);
+            if (existing.Count == 0)
+                await _db.UpsertChannelsAsync(BuiltInCatalog.Create(), cancellationToken);
+
+            return WorkflowTaskResult.Completed(new { channelsBeforeSeed = existing.Count });
+        });
+
+        _workflows.RegisterHandler("startup.channels", async (_, cancellationToken) =>
+        {
+            _allChannels = await _db.GetChannelsAsync(cancellationToken);
+            await ApplyFilterAsync();
+            return WorkflowTaskResult.Completed(new
+            {
+                channels = _allChannels.Count,
+                sources = _allChannels.Sum(channel => channel.Sources.Count)
+            });
+        });
+
+        _workflows.RegisterHandler("startup.home", async (_, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ApplyResponsiveLayout();
+            await ShowHomeAsync();
+            return WorkflowTaskResult.Completed();
+        });
+    }
+
+    private static WorkflowDefinition CreateStartupWorkflow() =>
+        new(
+            "sanchestv.startup",
+            1,
+            [
+                new WorkflowTaskDefinition(
+                    "database",
+                    "startup.database",
+                    RetryCount: 2,
+                    RetryDelay: TimeSpan.FromMilliseconds(150),
+                    Timeout: TimeSpan.FromSeconds(10)),
+                new WorkflowTaskDefinition(
+                    "seed",
+                    "startup.seed",
+                    ["database"],
+                    RetryCount: 1,
+                    RetryDelay: TimeSpan.FromMilliseconds(150),
+                    Timeout: TimeSpan.FromSeconds(15)),
+                new WorkflowTaskDefinition(
+                    "channels",
+                    "startup.channels",
+                    ["seed"],
+                    RetryCount: 1,
+                    RetryDelay: TimeSpan.FromMilliseconds(150),
+                    Timeout: TimeSpan.FromSeconds(20)),
+                new WorkflowTaskDefinition(
+                    "home",
+                    "startup.home",
+                    ["channels"],
+                    RetryCount: 0,
+                    Timeout: TimeSpan.FromSeconds(20))
+            ],
+            MaxParallelTasks: 2);
 
     private void Window_SourceInitialized(object? sender, EventArgs e) => Windows11Backdrop.Apply(this);
 
@@ -211,24 +286,38 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 8...");
-            await _db.InitializeAsync();
+            SetBusy(true, "Inicializando SanchesTV 8.2...");
+            await _workflows.InitializeAsync();
 
-            var existing = await _db.GetChannelsAsync();
-            if (existing.Count == 0)
-                await _db.UpsertChannelsAsync(BuiltInCatalog.Create());
+            var recovered = await _workflows.RecoverIncompleteAsync();
+            if (recovered.Count > 0)
+                AppTelemetry.Info("workflow.recovery.completed", new { recovered = recovered.Count });
 
-            await RefreshChannelsAsync();
-            ApplyResponsiveLayout();
-            await ShowHomeAsync();
+            var startup = await _workflows.StartAsync(
+                CreateStartupWorkflow(),
+                new { version = "8.2.0", processId = Environment.ProcessId },
+                $"desktop-{Environment.ProcessId}");
+
+            if (startup.Status != WorkflowExecutionStatus.Completed)
+                throw new InvalidOperationException(
+                    startup.LastError ?? "O fluxo durável de inicialização não foi concluído.");
+
+            AppTelemetry.Info("workflow.startup.completed", new
+            {
+                id = startup.Id,
+                version = startup.Version
+            });
+
             StatusText.Text = "Pronto";
             TitleStatusText.Text = "Central de TV em Português";
             SetBusy(false);
 
+            await _workflows.PurgeHistoryAsync(TimeSpan.FromDays(14));
             await AutoSyncCatalogAsync();
         }
         catch (Exception ex)
         {
+            AppTelemetry.Error("workflow.startup.failed", ex);
             MessageBox.Show(this, ex.Message, "Falha ao iniciar", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusText.Text = "Erro na inicialização";
             TitleStatusText.Text = "Erro";
