@@ -79,7 +79,7 @@ public sealed class DurableWorkflowOrchestrator
     private readonly SemaphoreSlim _fileGate = new(1, 1);
     private readonly object _snapshotGate = new();
 
-    public event EventHandler<WorkflowEvent>? EventPublished;
+    public event Action<WorkflowEvent>? EventPublished;
 
     public DurableWorkflowOrchestrator(string? stateDirectory = null)
     {
@@ -379,7 +379,7 @@ public sealed class DurableWorkflowOrchestrator
         WorkflowTaskStatus? taskStatus,
         string? message)
     {
-        EventPublished?.Invoke(this, new WorkflowEvent(
+        EventPublished?.Invoke(new WorkflowEvent(
             snapshot.RunId,
             snapshot.WorkflowName,
             taskName,
