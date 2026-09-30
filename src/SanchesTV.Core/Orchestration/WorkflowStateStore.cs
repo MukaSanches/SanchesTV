@@ -36,7 +36,8 @@ public sealed class SqliteWorkflowStateStore : IWorkflowStateStore
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = DatabasePath,
-            Mode = SqliteOpenMode.ReadWriteCreate
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            ForeignKeys = true
         }.ToString();
     }
 

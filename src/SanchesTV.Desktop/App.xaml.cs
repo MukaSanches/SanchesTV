@@ -18,9 +18,24 @@ namespace SanchesTV.Desktop;
 
 public partial class App : Application
 {
+    private bool _captureMode;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var captureIndex = Array.FindIndex(e.Args, arg =>
+            string.Equals(arg, "--capture-cinema-hub", StringComparison.OrdinalIgnoreCase));
+        if (captureIndex >= 0)
+        {
+            _captureMode = true;
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var outputDirectory = e.Args.Length > captureIndex + 1
+                ? e.Args[captureIndex + 1]
+                : Path.Combine(AppContext.BaseDirectory, "cinema-hub-captures");
+            Shutdown(await CinemaHubCapture.RunAsync(outputDirectory));
+            return;
+        }
+
         AppTelemetry.Initialize();
         DispatcherUnhandledException += (_, args) =>
         {
@@ -47,7 +62,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        AppTelemetry.Shutdown();
+        if (!_captureMode) AppTelemetry.Shutdown();
         base.OnExit(e);
     }
 }

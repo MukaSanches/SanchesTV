@@ -5,6 +5,7 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Serilog;
+using SanchesTV.Core.Diagnostics;
 
 namespace SanchesTV.Desktop.Diagnostics;
 
@@ -49,7 +50,7 @@ public static class AppTelemetry
             .Build();
 
         _initialized = true;
-        Info("app.start", new { version = "8.2.0", os = Environment.OSVersion.VersionString });
+        Info("app.start", new { version = "8.3.0", os = Environment.OSVersion.VersionString });
     }
 
     public static IDisposable? StartActivity(string name)
@@ -84,21 +85,37 @@ public static class AppTelemetry
     public static void Info(string eventName, object? payload = null)
     {
         Initialize();
-        Log.Information("{EventName} {@Payload}", eventName, payload);
+        Log.Information("{EventName} {@Payload}", Safe(eventName), SafePayload(payload));
     }
 
     public static void Error(string eventName, Exception exception, object? payload = null)
     {
         Initialize();
-        Log.Error(exception, "{EventName} {@Payload}", eventName, payload);
+        Log.Error("{EventName} {@Error} {@Payload}",
+            Safe(eventName), DescribeException(exception), SafePayload(payload));
     }
 
-    private static string Safe(string? value)
+    private static string Safe(string? value) => DiagnosticRedactor.Redact(value);
+
+    // Existing structured metrics remain intact. Arbitrary object payloads must be
+    // curated by callers; the text redactor cannot guarantee their confidentiality.
+    private static object? SafePayload(object? payload) => payload switch
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-        return value.Length > 400 ? value[..400] : value;
-    }
+        string text => Safe(text),
+        Uri address => Safe(address.OriginalString),
+        Exception exception => DescribeException(exception),
+        _ => payload
+    };
+
+    private static object DescribeException(Exception exception, int depth = 0) => new
+    {
+        type = exception.GetType().FullName,
+        message = Safe(exception.Message),
+        stackTrace = DiagnosticRedactor.Redact(exception.StackTrace, 2000),
+        inner = depth < 3 && exception.InnerException is { } inner
+            ? DescribeException(inner, depth + 1)
+            : null
+    };
 
     public static void Shutdown()
     {
