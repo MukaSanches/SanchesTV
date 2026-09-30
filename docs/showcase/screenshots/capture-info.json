@@ -1,0 +1,31 @@
+{
+  "renderer": "WPF RenderTargetBitmap; native content in fresh offscreen parent after Window.Show",
+  "catalogue": "Deterministic demonstration fixture; no playback or network access",
+  "fixtureNowUtc": "2026-09-30T20:00:00+00:00",
+  "channelCount": 8,
+  "width": 1160,
+  "viewportHeight": 850,
+  "fullHeight": 3000,
+  "fullContentHeight": 3396,
+  "fullCaptureTruncated": true,
+  "viewportLayout": {
+    "expectedWidth": 1160,
+    "expectedHeight": 850,
+    "rootWidth": 1160,
+    "rootHeight": 850,
+    "contentWidth": 1160,
+    "contentHeight": 850
+  },
+  "fullLayout": {
+    "expectedWidth": 1160,
+    "expectedHeight": 3000,
+    "rootWidth": 1160,
+    "rootHeight": 3000,
+    "contentWidth": 1160,
+    "contentHeight": 3000
+  },
+  "images": [
+    "cinema-hub-native.png",
+    "cinema-hub-native-full.png"
+  ]
+}

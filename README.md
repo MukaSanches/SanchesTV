@@ -1,6 +1,31 @@
-# SanchesTV 8.2.0 — Cinema OS + Durable Orchestration
+# SanchesTV 8.3.0 — Cinema Hub
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
+
+## Cinema Hub 8.3
+
+A nova janela de descoberta usa o catálogo local e preserva todos os módulos anteriores. Abra pelo botão **Cinema Hub**, pela navegação, pelo Command Center ou com **Ctrl+H**.
+
+- favoritos e recentes, até oito canais por seção, com acesso à biblioteca completa;
+- recomendações determinísticas por afinidade de categoria/país/idioma e variedade, priorizando o status registrado das fontes;
+- programação atual/próxima e progresso do programa a partir do XMLTV importado, em uma consulta local;
+- arte cinematográfica original, foco visível por teclado, nomes acessíveis e mensagens de erro no próprio Hub;
+- diagnóstico com redação de URLs, magnet e padrões comuns de credenciais;
+- cancelamento de playback solicitado pelo usuário sem penalizar a saúde das fontes;
+- foreign keys explícitas em cada conexão e testes de persistência/retenção com SQLite real.
+
+A descoberta não faz um novo teste de rede: “online” descreve o último status gravado, e fontes ainda não testadas são contabilizadas separadamente. A recomendação é uma regra local, sem serviço de IA remoto.
+
+### Livro e imagens
+
+- [Livro ilustrado da evolução — PDF](docs/SanchesTV-Evolucao.pdf)
+- [Fonte editável e instruções para gerar o livro](docs/book/README.md)
+- [Prévia visual interativa](docs/showcase/index.html) e [instruções](docs/showcase/README.md)
+- [Desktop](docs/showcase/screenshots/desktop.png), [mobile](docs/showcase/screenshots/mobile.png) e [Media Lab](docs/showcase/screenshots/gallery.png)
+- [Cinema Hub nativo WPF](docs/showcase/screenshots/cinema-hub-native.png) — captura no Windows com catálogo demonstrativo
+- [Validação da V8.3](docs/VALIDACAO_V8.3.md)
+
+As imagens da galeria são capturas da prévia HTML com dados demonstrativos. O aplicativo principal continua nativo WPF para Windows; a prévia não reproduz vídeo nem substitui o cliente.
 
 A V8.2.0 preserva integralmente a plataforma multimídia, o Playback Intelligence e o Cinema OS da V8.1 e adiciona um **motor local de orquestração durável** inspirado nos mecanismos públicos do Netflix Conductor, adaptado nativamente para C#/.NET e SQLite.
 

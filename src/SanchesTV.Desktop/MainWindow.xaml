@@ -4,7 +4,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:playback="clr-namespace:SanchesTV.Desktop.Playback"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="SanchesTV 8.1 • Cinema OS Refined"
+        Title="SanchesTV 8.3 • Cinema Hub"
         Width="1540" Height="920"
         MinWidth="480" MinHeight="320"
         WindowStyle="None"
@@ -52,6 +52,7 @@
                         <Button.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Início" Click="Home_Click"/>
+                                <MenuItem Header="Cinema Hub • Ctrl+H" Click="CinemaHub_Click"/>
                                 <MenuItem Header="Ao vivo" Click="All_Click"/>
                                 <MenuItem Header="Filmes" Click="Movies_Click"/>
                                 <MenuItem Header="Brasil" Click="Brazil_Click"/>
@@ -84,7 +85,7 @@
                     </Grid>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="SanchesTV" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="8.1 • Cinema OS" FontSize="10" Foreground="#8EA0B8"/>
+                        <TextBlock Text="8.3 • Cinema Hub" FontSize="10" Foreground="#8EA0B8"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -122,6 +123,13 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE80F;" Width="28" FontSize="16"/>
                                 <TextBlock Text="Início"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource NavButton}" Click="CinemaHub_Click"
+                                AutomationProperties.Name="Abrir Cinema Hub" ToolTip="Descoberta local • Ctrl+H">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="✦" Width="28" FontSize="16" Foreground="{StaticResource Accent2Brush}"/>
+                                <TextBlock Text="Cinema Hub"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource NavButton}" Click="All_Click">
@@ -222,7 +230,7 @@
                                 <StackPanel VerticalAlignment="Center" MaxWidth="700">
                                     <Border Background="#26FFFFFF" CornerRadius="12" Padding="10,5"
                                             HorizontalAlignment="Left" Margin="0,0,0,14">
-                                        <TextBlock Text="SANCHES TV 8.1 • CINEMA OS" FontSize="10"
+                                        <TextBlock Text="SANCHES TV 8.3 • CINEMA HUB" FontSize="10"
                                                    FontWeight="Bold" Foreground="#D8E6FF"/>
                                     </Border>
                                     <TextBlock Text="Sua TV evoluiu para uma plataforma de mídia inteligente."
@@ -231,12 +239,14 @@
                                     <TextBlock Text="Playback inteligente, P2P, timeshift, gravação e ferramentas profissionais em uma experiência mais rápida, resiliente e cinematográfica."
                                                FontSize="15" Foreground="#C8D0DE" TextWrapping="Wrap"
                                                Margin="0,14,0,20" MaxWidth="650"/>
-                                    <StackPanel Orientation="Horizontal">
+                                    <WrapPanel>
                                         <Button Style="{StaticResource AccentButton}" Content="▶ Explorar ao vivo"
                                                 Click="All_Click" Padding="18,11"/>
                                         <Button Style="{StaticResource ModernButton}" Content="🎬 Ver filmes"
                                                 Click="Movies_Click" Padding="18,11"/>
-                                    </StackPanel>
+                                        <Button Style="{StaticResource ModernButton}" Content="✦ Cinema Hub"
+                                                Click="CinemaHub_Click" Padding="18,11" ToolTip="Ctrl+H"/>
+                                    </WrapPanel>
                                 </StackPanel>
 
                                 <Grid Grid.Column="1" Margin="28,8,0,8">

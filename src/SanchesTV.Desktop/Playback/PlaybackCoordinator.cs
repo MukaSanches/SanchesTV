@@ -62,6 +62,11 @@ public sealed class PlaybackCoordinator
                 _health.RecordSuccess(source, fallback.Elapsed);
                 return new(source, PlaybackEngineKind.Vlc, mpvAttempted, fallback.Elapsed);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Trocar de canal cancela a abertura anterior; isso não indica falha da fonte.
+                throw;
+            }
             catch
             {
                 foreach (var source in ordered) _health.RecordFailure(source);

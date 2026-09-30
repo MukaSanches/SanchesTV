@@ -16,6 +16,7 @@ using SanchesTV.Core.Parsing;
 using SanchesTV.Core.Storage;
 using SanchesTV.Core.Orchestration;
 using SanchesTV.Core.Search;
+using SanchesTV.Core.Discovery;
 using SanchesTV.Desktop.Playback;
 using SanchesTV.Desktop.Audio;
 using SanchesTV.Desktop.P2P;
@@ -286,7 +287,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetBusy(true, "Inicializando SanchesTV 8.2...");
+            SetBusy(true, "Inicializando SanchesTV 8.3...");
             await _workflows.InitializeAsync();
 
             var recovered = await _workflows.RecoverIncompleteAsync();
@@ -295,7 +296,7 @@ public partial class MainWindow : Window
 
             var startup = await _workflows.StartAsync(
                 CreateStartupWorkflow(),
-                new { version = "8.2.0", processId = Environment.ProcessId },
+                new { version = "8.3.0", processId = Environment.ProcessId },
                 $"desktop-{Environment.ProcessId}");
 
             if (startup.Status != WorkflowExecutionStatus.Completed)
@@ -513,10 +514,14 @@ public partial class MainWindow : Window
     private Channel? SelectedChannel =>
         ChannelList.SelectedItem is ChannelListItem item ? item.Channel : null;
 
-    private async Task PlayChannelAsync(Channel channel)
+    private async Task PlayChannelAsync(Channel channel, bool reportErrors = true)
     {
         if (channel.Sources.Count == 0)
+        {
+            if (!reportErrors)
+                throw new InvalidOperationException("Este canal ainda não tem uma fonte de reprodução.");
             return;
+        }
 
         try
         {
@@ -565,6 +570,8 @@ public partial class MainWindow : Window
             AppTelemetry.PlaybackFailed(_activeBackend.ToString(), ex.Message);
             StatusText.Text = "Nenhuma fonte iniciou";
             TitleStatusText.Text = "Fonte indisponível";
+            if (!reportErrors)
+                throw;
             MessageBox.Show(this, ex.Message, "Falha de reprodução", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
@@ -684,6 +691,7 @@ public partial class MainWindow : Window
         var actions = new[]
         {
             new CommandPaletteAction("Início", "Cinema OS", ShowHomeAsync),
+            new CommandPaletteAction("Cinema Hub", "Descoberta local, favoritos, recentes e programação", OpenCinemaHubAsync),
             new CommandPaletteAction("Ao vivo", "Todos os canais", () => ShowBrowseAsync("all", "Ao vivo", "Todos os canais disponíveis no catálogo local.")),
             new CommandPaletteAction("Filmes", "Cinema e filmes", () => ShowBrowseAsync("movies", "Filmes", "Playlist Movies do IPTV-org e canais classificados como cinema/filmes.")),
             new CommandPaletteAction("Favoritos", "Sua biblioteca", () => ShowBrowseAsync("favorites", "Favoritos", "Seus canais marcados como favoritos.")),
@@ -698,6 +706,54 @@ public partial class MainWindow : Window
     }
 
     private async void Home_Click(object sender, RoutedEventArgs e) => await ShowHomeAsync();
+
+    private bool _openingCinemaHub;
+
+    private async void CinemaHub_Click(object sender, RoutedEventArgs e) => await OpenCinemaHubAsync();
+
+    private async Task OpenCinemaHubAsync()
+    {
+        if (_openingCinemaHub)
+            return;
+
+        _openingCinemaHub = true;
+        try
+        {
+            var channels = await _db.GetChannelsAsync();
+            var recent = await _db.GetRecentChannelIdsAsync(40);
+            var now = DateTimeOffset.UtcNow;
+            var programs = await _db.GetDiscoveryProgramsAsync(now);
+            var snapshot = new DiscoveryEngine().Build(channels, recent, programs, now);
+            new CinemaHubWindow(snapshot,
+                async channel => await PlayChannelAsync(channel, reportErrors: false),
+                () => Favorites_Click(this, new RoutedEventArgs()),
+                () =>
+                {
+                    var guideChannel = SelectedChannel ?? _currentChannel
+                        ?? snapshot.Favorites.Concat(snapshot.Recent).Concat(snapshot.Recommendations)
+                            .FirstOrDefault(channel => !string.IsNullOrWhiteSpace(channel.EpgId));
+                    if (guideChannel is null)
+                    {
+                        EpgGuide_Click(this, new RoutedEventArgs());
+                        return;
+                    }
+                    new EpgGuideWindow(_db, _recordingScheduler, guideChannel) { Owner = this }.Show();
+                },
+                () => ImportFile_Click(this, new RoutedEventArgs()),
+                () => MediaLab_Click(this, new RoutedEventArgs()))
+            { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            AppTelemetry.Error("cinema.hub.failed", ex);
+            MessageBox.Show(this, "Não foi possível abrir o Cinema Hub. O catálogo e o player continuam disponíveis.",
+                "Cinema Hub", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openingCinemaHub = false;
+        }
+    }
 
     private async void All_Click(object sender, RoutedEventArgs e) =>
         await ShowBrowseAsync("all", "Ao vivo", "Todos os canais disponíveis no catálogo local.");
@@ -1424,7 +1480,7 @@ public partial class MainWindow : Window
 
         var ffmpeg = _recorder.IsAvailable ? "disponível" : "ausente";
         var text =
-            $"SanchesTV: 8.1.0\n" +
+            $"SanchesTV: 8.3.0\n" +
             $"Pipeline: libmpv → LibVLC fallback\n" +
             $"Fonte: {source}\n" +
             $"Provider: {_activeSource?.Provider ?? "(nenhum)"}\n\n" +
@@ -1545,6 +1601,11 @@ public partial class MainWindow : Window
         if (e.Key == Key.K && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             CommandPalette_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (e.Key == Key.H && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            CinemaHub_Click(this, new RoutedEventArgs());
             e.Handled = true;
         }
         else if (e.Key == Key.Escape && _isFullscreen)

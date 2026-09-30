@@ -1,0 +1,19 @@
+{
+  "edition_date": "30 de setembro de 2026",
+  "baseline_commit": "c76469e",
+  "baseline_commits": 227,
+  "baseline_tags": 15,
+  "test_count": 103,
+  "test_result": "A suite xUnit Release passou com 103 testes, zero falhas e zero testes ignorados no Linux. O workflow Quality do GitHub Actions também concluiu com sucesso em Linux e Windows; o job Windows confirmou os 103 testes. A revisão inclui regressões de descoberta/EPG, persistência e proteção de diagnósticos.",
+  "desktop_build_result": "A solução compilou em Release por cross-targeting no Linux e nativamente no CI Windows: zero warnings e zero erros. O modo demonstrativo de captura executou a janela Cinema Hub WPF no Windows. Essa execução não iniciou reprodução de mídia nem validou hardware.",
+  "ci_quality_url": "https://github.com/MukaSanches/SanchesTV/actions/runs/36789985852",
+  "releases_url": "https://github.com/MukaSanches/SanchesTV/releases",
+  "core_addition": "DiscoveryEngine.Build produz um snapshot local com favoritos, recentes e recomendações, limitado a oito canais por seção. Favoritos e recentes preservam canais offline; a deduplicação usa o ID e os recentes seguem a ordem do histórico. Recomendações excluem favoritos e combinam afinidade de favoritos (peso 2) e recentes (peso 1), diversidade de categoria/país/idioma e saúde registrada da fonte. Não há probing nessa construção nem API de IA. O agendamento expõe Agora, Próximo e progresso em UTC, ignora intervalos inválidos e escolhe o menor início futuro. O snapshot não altera playlists, persistência ou URLs. Doze casos xUnit cobrem as regras de descoberta.",
+  "native_addition": "O Cinema Hub WPF foi integrado à navegação, ao menu, à Home e ao Command Center, com o atalho Ctrl+H, no trabalho da versão 8.3.0. CinemaHubWindow apresenta hero com arte e fallback em gradiente; métricas do catálogo e seções de favoritos, recentes e recomendações; Agora/Próximo e progresso quando há XMLTV. Botões reutilizam callbacks de reprodução, favoritos, EPG, importação e Media Lab. A reprodução é aguardada, bloqueia duplo acionamento, fecha a janela somente no sucesso e apresenta erro na própria interface. Há foco ciano com Tab, Escape para fechar e rolagem vertical. GetDiscoveryProgramsAsync reúne a programação em uma consulta SQLite, com janela de 24 horas. Essas métricas usam estado registrado; não afirmam uma verificação de disponibilidade em tempo real.",
+  "screenshot_desktop": "docs/showcase/screenshots/desktop.png",
+  "screenshot_mobile": "docs/showcase/screenshots/mobile.png",
+  "screenshot_gallery": "docs/showcase/screenshots/gallery.png",
+  "cover_art": "docs/showcase/assets/cinema-horizon.png",
+  "include_native": true,
+  "screenshot_native": "docs/showcase/screenshots/cinema-hub-native.png"
+}

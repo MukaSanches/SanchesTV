@@ -20,7 +20,8 @@ public sealed class AppDatabase
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = DatabasePath,
-            Mode = SqliteOpenMode.ReadWriteCreate
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            ForeignKeys = true
         }.ToString();
     }
 
@@ -463,6 +464,36 @@ public sealed class AppDatabase
         while (await reader.ReadAsync(cancellationToken))
             result.Add(ReadProgram(reader));
         return result;
+    }
+
+    /// <summary>Loads one current and one upcoming program per EPG identity in one local query.</summary>
+    public async Task<IReadOnlyList<EpgProgram>> GetDiscoveryProgramsAsync(
+        DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        await using var connection = Open();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+        WITH ranked AS (
+            SELECT channel_epg_id, start_utc, end_utc, title, description, category,
+                ROW_NUMBER() OVER (
+                    PARTITION BY channel_epg_id, CASE WHEN start_utc <= $now THEN 0 ELSE 1 END
+                    ORDER BY CASE WHEN start_utc <= $now THEN start_utc END DESC,
+                        start_utc, end_utc, title COLLATE BINARY, description COLLATE BINARY, category COLLATE BINARY
+                ) AS position
+            FROM epg_programs
+            WHERE end_utc > $now AND start_utc < $horizon AND end_utc > start_utc
+        )
+        SELECT channel_epg_id, start_utc, end_utc, title, description, category
+        FROM ranked WHERE position = 1
+        ORDER BY channel_epg_id, start_utc;
+        """;
+        command.Parameters.AddWithValue("$now", now.UtcDateTime.ToString("O"));
+        command.Parameters.AddWithValue("$horizon", now.AddDays(1).UtcDateTime.ToString("O"));
+        var programs = new List<EpgProgram>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+            programs.Add(ReadProgram(reader));
+        return programs;
     }
 
     public async Task<IReadOnlyList<EpgProgram>> SearchProgramsAsync(
