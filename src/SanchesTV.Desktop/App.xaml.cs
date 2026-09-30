@@ -32,7 +32,9 @@ public partial class App : Application
             var outputDirectory = e.Args.Length > captureIndex + 1
                 ? e.Args[captureIndex + 1]
                 : Path.Combine(AppContext.BaseDirectory, "cinema-hub-captures");
-            Shutdown(await CinemaHubCapture.RunAsync(outputDirectory));
+            var captureExitCode = await CinemaHubCapture.RunAsync(outputDirectory);
+            Environment.ExitCode = captureExitCode;
+            Shutdown(captureExitCode);
             return;
         }
 
