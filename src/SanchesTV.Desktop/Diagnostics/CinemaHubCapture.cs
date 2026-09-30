@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -53,25 +54,41 @@ internal static class CinemaHubCapture
             };
             window.Show();
             var content = (Grid)window.Content;
-            // The window's background is outside the content subtree being captured.
+            await window.Dispatcher.InvokeAsync(() => window.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+
+            // Load native templates first, then remove the HWND ancestor. A hosted visual can
+            // retain the desktop's clipping bounds even when its own layout is larger.
+            foreach (var key in window.Resources.Keys)
+                content.Resources[key] = window.Resources[key];
+            foreach (var dictionary in window.Resources.MergedDictionaries)
+                content.Resources.MergedDictionaries.Add(dictionary);
             content.Background = window.Background;
-            await PrepareLayoutAsync(window, content, ViewportHeight);
+            content.SetValue(TextElement.FontFamilyProperty, window.FontFamily);
+            content.SetValue(TextElement.ForegroundProperty, window.Foreground);
+            content.UseLayoutRounding = true;
+            content.SnapsToDevicePixels = true;
+            window.Content = null;
+            await window.Dispatcher.InvokeAsync(() => window.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+            if (VisualTreeHelper.GetParent(content) is not null)
+                throw new InvalidOperationException("The WPF capture root still has a visual parent.");
+
+            await PrepareLayoutAsync(content, ViewportHeight);
             SavePng(content, CaptureWidth, ViewportHeight,
                 Path.Combine(outputDirectory, "cinema-hub-native.png"));
 
             var scroll = (ScrollViewer)content.Children[0];
-            var desiredFullHeight = (int)Math.Ceiling(scroll.ExtentHeight);
+            var desiredFullHeight = (int)Math.Ceiling(((FrameworkElement)scroll.Content).DesiredSize.Height);
             var fullHeight = Math.Clamp(desiredFullHeight, ViewportHeight, MaximumFullHeight);
-            await PrepareLayoutAsync(window, content, fullHeight);
+            await PrepareLayoutAsync(content, fullHeight);
             scroll.ScrollToTop();
-            await window.Dispatcher.InvokeAsync(() => content.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+            await content.Dispatcher.InvokeAsync(() => content.UpdateLayout(), DispatcherPriority.ApplicationIdle);
             SavePng(content, CaptureWidth, fullHeight,
                 Path.Combine(outputDirectory, "cinema-hub-native-full.png"));
 
             await File.WriteAllTextAsync(Path.Combine(outputDirectory, "capture-info.json"),
                 JsonSerializer.Serialize(new
                 {
-                    renderer = "WPF RenderTargetBitmap",
+                    renderer = "WPF RenderTargetBitmap; detached native content after Window.Show",
                     catalogue = "Deterministic demonstration fixture; no playback or network access",
                     fixtureNowUtc = FixtureNow,
                     channelCount = 8,
@@ -103,21 +120,29 @@ internal static class CinemaHubCapture
         }
     }
 
-    private static async Task PrepareLayoutAsync(Window window, FrameworkElement content, int height)
+    private static async Task PrepareLayoutAsync(FrameworkElement content, int height)
     {
-        window.Height = height;
         content.Width = CaptureWidth;
         content.Height = height;
+        content.InvalidateMeasure();
         content.Measure(new Size(CaptureWidth, height));
         content.Arrange(new Rect(0, 0, CaptureWidth, height));
-        window.UpdateLayout();
-        await window.Dispatcher.InvokeAsync(() => content.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+        content.UpdateLayout();
+        await content.Dispatcher.InvokeAsync(() => content.UpdateLayout(), DispatcherPriority.ApplicationIdle);
+        if (Math.Abs(content.ActualWidth - CaptureWidth) > .5 || Math.Abs(content.ActualHeight - height) > .5)
+            throw new InvalidOperationException("The WPF capture root did not receive the requested layout size.");
     }
 
     private static void SavePng(Visual content, int width, int height, string path)
     {
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(content);
+        var stride = checked(width * 4);
+        var pixels = new byte[checked(stride * height)];
+        bitmap.CopyPixels(pixels, stride, 0);
+        var corners = new[] { 3, stride - 1, (height - 1) * stride + 3, pixels.Length - 1 };
+        if (corners.Any(index => pixels[index] != 255))
+            throw new InvalidOperationException("The WPF capture contains transparent edges; native content was clipped.");
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path);

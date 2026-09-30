@@ -34,6 +34,7 @@ jobs:
 
   desktop:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -60,5 +61,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: cinema-hub-native-captures
-          path: ${{ runner.temp }}/cinema-hub-captures/*.png
+          path: |
+            ${{ runner.temp }}/cinema-hub-captures/*.png
+            ${{ runner.temp }}/cinema-hub-captures/capture-info.json
           if-no-files-found: error
