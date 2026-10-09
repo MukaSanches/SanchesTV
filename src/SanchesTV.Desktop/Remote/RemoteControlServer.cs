@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace SanchesTV.Desktop.Remote;
@@ -12,7 +13,9 @@ public sealed class RemoteControlServer : IAsyncDisposable
     private Task? _loop;
 
     public int Port { get; }
-    public string Token { get; } = Convert.ToHexString(Guid.NewGuid().ToByteArray())[..10].ToLowerInvariant();
+    // Cryptographically strong 256-bit secret, regenerated every time the server starts.
+    public string Token { get; } =
+        Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
 
     public event Action? NextRequested;
     public event Action? PreviousRequested;
@@ -29,15 +32,15 @@ public sealed class RemoteControlServer : IAsyncDisposable
     public string GetRemoteUrl()
     {
         var ip = Dns.GetHostEntry(Dns.GetHostName())
-            .AddressList
-            .FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(x));
-        return $"http://{ip ?? IPAddress.Loopback}:{Port}/?token={Token}";
+            .AddressList.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork &&
+                !IPAddress.IsLoopback(x));
+        // Fragment identifiers remain in the browser; they are not sent in HTTP GET requests.
+        return $"http://{ip ?? IPAddress.Loopback}:{Port}/#token={Token}";
     }
 
     public void Start()
     {
-        if (_loop is not null)
-            return;
+        if (_loop is not null) return;
         _listener.Start();
         _loop = Task.Run(ListenLoopAsync);
     }
@@ -51,72 +54,115 @@ public sealed class RemoteControlServer : IAsyncDisposable
                 using var client = await _listener.AcceptTcpClientAsync(_cts.Token);
                 await HandleClientAsync(client, _cts.Token);
             }
-            catch (OperationCanceledException) { break; }
-            catch { }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested) { break; }
+            catch { /* Bad clients must not terminate the control server. */ }
         }
     }
 
     private async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
         using var stream = client.GetStream();
         using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
 
-        var requestLine = await reader.ReadLineAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(requestLine))
-            return;
+        var line = await reader.ReadLineAsync(timeout.Token);
+        if (line is null || line.Length > 4096) return;
+        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        var parts = requestLine.Split(' ');
-        if (parts.Length < 2)
-            return;
-
-        var uri = new Uri("http://localhost" + parts[1]);
-        var suppliedToken = ParseQueryValue(uri.Query, "token");
-        if (!string.Equals(suppliedToken, Token, StringComparison.Ordinal))
+        if (parts.Length != 3 ||
+            !parts[2].StartsWith("HTTP/1.", StringComparison.Ordinal) ||
+            !parts[1].StartsWith('/') ||
+            !Uri.TryCreate("http://localhost" + parts[1], UriKind.Absolute, out var uri))
         {
-            await WriteResponseAsync(stream, "403 Forbidden", "text/plain; charset=utf-8", "Token inválido.", cancellationToken);
+            await RespondAsync(stream, "400 Bad Request", "text/plain", "Requisição inválida.", timeout.Token);
             return;
         }
 
-        switch (uri.AbsolutePath)
+        string? token = null;
+        var length = 0;
+        var finishedHeaders = false;
+        for (var i = 0; i < 64; i++)
         {
-            case "/api/next": NextRequested?.Invoke(); break;
-            case "/api/prev": PreviousRequested?.Invoke(); break;
-            case "/api/play": PlayPauseRequested?.Invoke(); break;
-            case "/api/mute": MuteRequested?.Invoke(); break;
-            case "/api/volup": VolumeRequested?.Invoke(+5); break;
-            case "/api/voldown": VolumeRequested?.Invoke(-5); break;
+            var header = await reader.ReadLineAsync(timeout.Token);
+            if (header is null) return;
+            length += header.Length;
+            if (length > 16_384) return;
+            if (header.Length == 0)
+            {
+                finishedHeaders = true;
+                break;
+            }
+            var colon = header.IndexOf(':');
+            if (colon > 0 && header[..colon].Equals("X-SanchesTV-Token",
+                StringComparison.OrdinalIgnoreCase))
+                token = header[(colon + 1)..].Trim();
         }
+        if (!finishedHeaders) return;
 
         if (uri.AbsolutePath.StartsWith("/api/", StringComparison.Ordinal))
         {
-            await WriteResponseAsync(stream, "200 OK", "application/json; charset=utf-8", "{\"ok\":true}", cancellationToken);
+            if (parts[0] != "POST")
+            {
+                await RespondAsync(stream, "405 Method Not Allowed", "text/plain",
+                    "Use POST.", timeout.Token);
+                return;
+            }
+            if (!ValidToken(token))
+            {
+                await RespondAsync(stream, "403 Forbidden", "text/plain",
+                    "Token inválido.", timeout.Token);
+                return;
+            }
+
+            var recognized = true;
+            switch (uri.AbsolutePath)
+            {
+                case "/api/next": NextRequested?.Invoke(); break;
+                case "/api/prev": PreviousRequested?.Invoke(); break;
+                case "/api/play": PlayPauseRequested?.Invoke(); break;
+                case "/api/mute": MuteRequested?.Invoke(); break;
+                case "/api/volup": VolumeRequested?.Invoke(+5); break;
+                case "/api/voldown": VolumeRequested?.Invoke(-5); break;
+                default: recognized = false; break;
+            }
+
+            await RespondAsync(stream, recognized ? "200 OK" : "404 Not Found",
+                "application/json", recognized ? "{\"ok\":true}" : "{\"ok\":false}", timeout.Token);
             return;
         }
 
-        await WriteResponseAsync(stream, "200 OK", "text/html; charset=utf-8", BuildPage(Token), cancellationToken);
-    }
-
-    private static string? ParseQueryValue(string query, string key)
-    {
-        foreach (var part in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        if (parts[0] != "GET" || uri.AbsolutePath != "/")
         {
-            var kv = part.Split('=', 2);
-            if (kv.Length == 2 && string.Equals(Uri.UnescapeDataString(kv[0]), key, StringComparison.OrdinalIgnoreCase))
-                return Uri.UnescapeDataString(kv[1]);
+            await RespondAsync(stream, "404 Not Found", "text/plain",
+                "Não encontrado.", timeout.Token);
+            return;
         }
-        return null;
+        await RespondAsync(stream, "200 OK", "text/html; charset=utf-8",
+            BuildPage(), timeout.Token);
     }
 
-    private static async Task WriteResponseAsync(NetworkStream stream, string status, string contentType, string body, CancellationToken cancellationToken)
+    private bool ValidToken(string? candidate)
+    {
+        if (candidate is null || candidate.Length != Token.Length) return false;
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.ASCII.GetBytes(candidate), Encoding.ASCII.GetBytes(Token));
+    }
+
+    private static async Task RespondAsync(NetworkStream stream, string status,
+        string contentType, string body, CancellationToken token)
     {
         var bytes = Encoding.UTF8.GetBytes(body);
-        var header = Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 {status}\r\nContent-Type: {contentType}\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n");
-        await stream.WriteAsync(header, cancellationToken);
-        await stream.WriteAsync(bytes, cancellationToken);
+        var headers = Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 {status}\r\nContent-Type: {contentType}\r\nContent-Length: {bytes.Length}\r\n" +
+            "Connection: close\r\nCache-Control: no-store\r\n" +
+            "Referrer-Policy: no-referrer\r\nX-Content-Type-Options: nosniff\r\n" +
+            "X-Frame-Options: DENY\r\n\r\n");
+        await stream.WriteAsync(headers, token);
+        await stream.WriteAsync(bytes, token);
     }
 
-    private static string BuildPage(string token) => $$"""
+    private static string BuildPage() => """
     <!doctype html>
     <html lang="pt-BR">
     <head>
@@ -139,8 +185,16 @@ public sealed class RemoteControlServer : IAsyncDisposable
         <button class="wide" onclick="go('mute')">🔇 Mudo</button>
       </div>
       <script>
-        const token='{{token}}';
-        function go(a){fetch('/api/'+a+'?token='+token,{cache:'no-store'});}
+        const token=new URLSearchParams(location.hash.slice(1)).get('token') || '';
+        async function go(action){
+          if(!token) return;
+          try {
+            const response=await fetch('/api/'+action,{
+              method:'POST',headers:{'X-SanchesTV-Token':token},cache:'no-store'
+            });
+            if(!response.ok) console.error('Controle: HTTP '+response.status);
+          } catch { console.error('Servidor SanchesTV indisponível.'); }
+        }
       </script>
     </body>
     </html>

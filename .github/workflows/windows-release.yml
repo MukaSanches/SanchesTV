@@ -90,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\installer\SanchesTV.iss"
-          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe")) {
+          if (-not (Test-Path ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe")) {
             throw "Installer was not generated."
           }
 
@@ -99,7 +99,7 @@ jobs:
         run: |
           $installDir = Join-Path $env:RUNNER_TEMP "SanchesTV-CleanInstall"
           New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe"
+          $installer = Resolve-Path ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe"
           $process = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=$installDir" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer returned $($process.ExitCode)" }
 
@@ -121,8 +121,8 @@ jobs:
       - name: SHA-256
         shell: pwsh
         run: |
-          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe" -Algorithm SHA256).Hash
-          "$hash  SanchesTV-Setup-8.3.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe.sha256" -Encoding ascii
+          $hash = (Get-FileHash ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe" -Algorithm SHA256).Hash
+          "$hash  SanchesTV-Setup-8.4.0-x64.exe" | Out-File ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe.sha256" -Encoding ascii
           Write-Host "SHA256=$hash"
 
       - name: Install Velopack CLI
@@ -133,7 +133,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ".\artifacts\velopack" | Out-Null
-          vpk pack -u SanchesTV -v 8.3.0 -o ".\artifacts\velopack" -p ".\artifacts\publish" -e SanchesTV.exe --packTitle "SanchesTV" --packAuthors "SanchesTV"
+          vpk pack -u SanchesTV -v 8.4.0 -o ".\artifacts\velopack" -p ".\artifacts\publish" -e SanchesTV.exe --packTitle "SanchesTV" --packAuthors "SanchesTV"
           if ($LASTEXITCODE -ne 0) { throw "Velopack packaging failed." }
           if (-not (Test-Path ".\artifacts\velopack\SanchesTV-win-Setup.exe")) { throw "Velopack Setup missing." }
           if (-not (Test-Path ".\artifacts\velopack\releases.win.json")) { throw "Velopack release feed missing." }
@@ -173,24 +173,24 @@ jobs:
       - name: Prepare illustrated book and application images
         shell: pwsh
         run: |
-          $book = ".\artifacts\installer\SanchesTV-Evolucao-8.3.0.pdf"
-          $images = ".\artifacts\installer\SanchesTV-Imagens-8.3.0.zip"
+          $book = ".\artifacts\installer\SanchesTV-Evolucao-8.4.0.pdf"
+          $images = ".\artifacts\installer\SanchesTV-Imagens-8.4.0.zip"
           Copy-Item ".\docs\SanchesTV-Evolucao.pdf" $book
           Compress-Archive -Path ".\docs\showcase\screenshots\*.png",".\docs\showcase\screenshots\capture-info.json" -DestinationPath $images -Force
           @($book, $images) | ForEach-Object {
             $hash = (Get-FileHash $_ -Algorithm SHA256).Hash
             "$hash  $(Split-Path $_ -Leaf)"
-          } | Set-Content ".\artifacts\installer\SanchesTV-Documentos-8.3.0.sha256" -Encoding ascii
+          } | Set-Content ".\artifacts\installer\SanchesTV-Documentos-8.4.0.sha256" -Encoding ascii
 
       - uses: actions/upload-artifact@v7
         with:
-          name: SanchesTV-Setup-8.3.0-x64
+          name: SanchesTV-Setup-8.4.0-x64
           path: |
-            artifacts/installer/SanchesTV-Setup-8.3.0-x64.exe
-            artifacts/installer/SanchesTV-Setup-8.3.0-x64.exe.sha256
-            artifacts/installer/SanchesTV-Evolucao-8.3.0.pdf
-            artifacts/installer/SanchesTV-Imagens-8.3.0.zip
-            artifacts/installer/SanchesTV-Documentos-8.3.0.sha256
+            artifacts/installer/SanchesTV-Setup-8.4.0-x64.exe
+            artifacts/installer/SanchesTV-Setup-8.4.0-x64.exe.sha256
+            artifacts/installer/SanchesTV-Evolucao-8.4.0.pdf
+            artifacts/installer/SanchesTV-Imagens-8.4.0.zip
+            artifacts/installer/SanchesTV-Documentos-8.4.0.sha256
             artifacts/velopack/*
           if-no-files-found: error
 
@@ -200,17 +200,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $exe = ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe"
-          $sha = ".\artifacts\installer\SanchesTV-Setup-8.3.0-x64.exe.sha256"
-          gh release view v8.3.0 --repo "$env:GITHUB_REPOSITORY" *> $null
+          $exe = ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe"
+          $sha = ".\artifacts\installer\SanchesTV-Setup-8.4.0-x64.exe.sha256"
+          gh release view v8.4.0 --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create v8.3.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.3.0" --notes "SanchesTV 8.3.0 Cinema Hub para Windows x64. Adiciona descoberta local determinística, favoritos e recentes preservados, programação agora/a seguir e arte original no Cinema Hub. Inclui foco de teclado, diagnóstico com redação de credenciais comuns, cancelamento de playback sem penalização de fontes, garantia de foreign keys por conexão e testes SQLite reais. Preserva libmpv/LibVLC, P2P, EPG, gravação, timeshift, Media Lab, orquestração durável e instaladores Inno/Velopack. O livro ilustrado e a prévia HTML estão no repositório; as imagens da prévia usam dados demonstrativos. Consulte docs/VALIDACAO_V8.3.md para evidências e limitações."
+            gh release create v8.4.0 --target "$env:GITHUB_SHA" --title "SanchesTV 8.4.0" --notes "SanchesTV 8.4.0 Cinema Hub para Windows x64. Adiciona descoberta local determinística, favoritos e recentes preservados, programação agora/a seguir e arte original no Cinema Hub. Inclui foco de teclado, diagnóstico com redação de credenciais comuns, cancelamento de playback sem penalização de fontes, garantia de foreign keys por conexão e testes SQLite reais. Preserva libmpv/LibVLC, P2P, EPG, gravação, timeshift, Media Lab, orquestração durável e instaladores Inno/Velopack. O livro ilustrado e a prévia HTML estão no repositório; as imagens da prévia usam dados demonstrativos. Consulte docs/VALIDACAO_V8.3.md para evidências e limitações."
           }
-          gh release upload v8.3.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
+          gh release upload v8.4.0 $exe $sha --clobber --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { throw "Installer upload failed." }
-          gh release upload v8.3.0 ".\artifacts\installer\SanchesTV-Evolucao-8.3.0.pdf" ".\artifacts\installer\SanchesTV-Imagens-8.3.0.zip" ".\artifacts\installer\SanchesTV-Documentos-8.3.0.sha256" --clobber --repo "$env:GITHUB_REPOSITORY"
+          gh release upload v8.4.0 ".\artifacts\installer\SanchesTV-Evolucao-8.4.0.pdf" ".\artifacts\installer\SanchesTV-Imagens-8.4.0.zip" ".\artifacts\installer\SanchesTV-Documentos-8.4.0.sha256" --clobber --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { throw "Book and images upload failed." }
           Get-ChildItem ".\artifacts\velopack" -File | ForEach-Object {
-            gh release upload v8.3.0 $_.FullName --clobber --repo "$env:GITHUB_REPOSITORY"
+            gh release upload v8.4.0 $_.FullName --clobber --repo "$env:GITHUB_REPOSITORY"
             if ($LASTEXITCODE -ne 0) { throw "Failed to upload $($_.Name)" }
           }
