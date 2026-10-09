@@ -10,8 +10,8 @@ public static class M3uParser
 
     public static IReadOnlyList<Channel> Parse(string text, string provider = "M3U")
     {
-        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n')
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        ArgumentNullException.ThrowIfNull(text);
+        using var input = new StringReader(text);
 
         var channels = new List<Channel>();
         string? info = null;
@@ -19,8 +19,11 @@ public static class M3uParser
         string? referrer = null;
         string? origin = null;
 
-        foreach (var line in lines)
+        string? raw;
+        while ((raw = input.ReadLine()) is not null)
         {
+            var line = raw.Trim().TrimStart('\uFEFF');
+            if (line.Length == 0) continue;
             if (line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase))
             {
                 info = line;
@@ -53,16 +56,18 @@ public static class M3uParser
             if (line.StartsWith("#"))
                 continue;
 
-            if (info is null || !Uri.TryCreate(line, UriKind.Absolute, out var uri))
+            if (info is null || !Uri.TryCreate(line, UriKind.Absolute, out var uri) ||
+                uri.IsFile || uri.Scheme is "data" or "javascript")
+            {
+                info = userAgent = referrer = origin = null;
                 continue;
+            }
 
-            var attributes = AttributeRegex.Matches(info)
-                .ToDictionary(
-                    m => m.Groups["key"].Value,
-                    m => m.Groups["value"].Value,
-                    StringComparer.OrdinalIgnoreCase);
+            var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Match match in AttributeRegex.Matches(info))
+                attributes[match.Groups["key"].Value] = match.Groups["value"].Value;
 
-            var comma = info.LastIndexOf(',');
+            var comma = FindMetadataSeparator(info);
             var displayName = comma >= 0 ? info[(comma + 1)..].Trim() : "Canal";
 
             if (attributes.TryGetValue("tvg-name", out var tvgName) &&
@@ -71,6 +76,8 @@ public static class M3uParser
                 displayName = tvgName.Trim();
             }
 
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = "Canal";
             var epgId = CanonicalizeEpgId(attributes.GetValueOrDefault("tvg-id"));
             var country = NormalizeCountry(attributes.GetValueOrDefault("tvg-country"));
             var language = NormalizeLanguage(attributes.GetValueOrDefault("tvg-language"));
@@ -105,6 +112,17 @@ public static class M3uParser
         }
 
         return channels;
+    }
+
+    private static int FindMetadataSeparator(string info)
+    {
+        bool inQuotes = false;
+        for (var i = 0; i < info.Length; i++)
+        {
+            if (info[i] == '"') inQuotes = !inQuotes;
+            else if (info[i] == ',' && !inQuotes) return i;
+        }
+        return -1;
     }
 
     public static string? CanonicalizeEpgId(string? value)
