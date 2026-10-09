@@ -51,10 +51,14 @@ jobs:
 
       - name: Prepare verified media runtime
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: .\.github\scripts\prepare-media-runtime.ps1 -PublishDir ".\artifacts\publish"
 
       - name: Prepare verified media toolchain
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: .\.github\scripts\prepare-v7-tools.ps1 -PublishDir ".\artifacts\publish"
 
       - name: Verify bundled media files
