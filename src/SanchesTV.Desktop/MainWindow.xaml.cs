@@ -918,7 +918,7 @@ public partial class MainWindow : Window
         {
             SetBusy(true, "Importando playlist...");
             var text = await File.ReadAllTextAsync(dialog.FileName);
-            var channels = M3uParser.Parse(text, Path.GetFileName(dialog.FileName));
+            var channels = await Task.Run(() => M3uParser.Parse(text, Path.GetFileName(dialog.FileName)));
             var count = await _db.UpsertChannelsAsync(channels);
             await RefreshChannelsAsync();
             await RefreshHomeListsAsync();
@@ -944,7 +944,7 @@ public partial class MainWindow : Window
         {
             SetBusy(true, "Baixando playlist...");
             var text = await _http.GetStringAsync(uri);
-            var channels = M3uParser.Parse(text, uri.Host);
+            var channels = await Task.Run(() => M3uParser.Parse(text, uri.Host));
             var count = await _db.UpsertChannelsAsync(channels);
             await RefreshChannelsAsync();
             await RefreshHomeListsAsync();
@@ -1025,7 +1025,7 @@ public partial class MainWindow : Window
                 xml = await _http.GetStringAsync(uri);
             }
 
-            var programs = XmlTvParser.Parse(xml);
+            var programs = await Task.Run(() => XmlTvParser.Parse(xml));
             await _db.ReplaceEpgAsync(programs);
             StatusText.Text = $"{programs.Count:N0} programas de EPG importados";
 

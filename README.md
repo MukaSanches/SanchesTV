@@ -1,4 +1,10 @@
-# SanchesTV 8.3.0 — Cinema Hub
+# SanchesTV 8.4.0 — Streaming Intelligence
+
+SanchesTV para Windows x64 agora oferece importação IPTV mais resistente, parsing de EPG por programa e controle remoto local autenticado com token de 256 bits e POST. O QR utiliza fragmento de URL para impedir que a chave seja enviada durante o carregamento inicial da página. O health check respeita headers da playlist e não penaliza protocolos que não são HTTP. A porta 8765 não deve ser exposta à internet: a LAN ainda utiliza HTTP sem TLS.
+
+Consulte a documentação de validação em [VALIDACAO_V8.4](docs/VALIDACAO_V8.4.md).
+
+## Base preservada: SanchesTV 8.3.0 — Cinema Hub
 
 SanchesTV é uma central multimídia para Windows x64 focada em TV/IPTV em português, fontes abertas e oficiais, mídia local e streaming P2P fornecido pelo usuário.
 

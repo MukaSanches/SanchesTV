@@ -1,5 +1,13 @@
 # Histórico de lançamentos
 
+## 8.4.0 — Streaming Intelligence
+
+- M3U: atributos repetidos, títulos com vírgula, BOM, URLs inválidas e cabeçalhos por canal.
+- XMLTV: processamento por programa, segurança contra DTD e entidades externas, horários válidos e títulos em português.
+- Monitor de fontes: User-Agent/Referer/Origin na verificação HTTP, sem marcar RTSP como erro de HTTP.
+- Controle remoto local: chave aleatória de 256 bits no fragmento do QR, POST autenticado e limites/timeout de rede.
+- Ampliação dos testes de regressão; instaladores e release atualizados para 8.4.0.
+
 ## 8.3.0 — Cinema Hub
 
 - Cinema Hub nativo WPF com descoberta local, favoritos, recentes e programação XMLTV atual/próxima.
