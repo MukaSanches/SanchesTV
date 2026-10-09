@@ -23,7 +23,30 @@ New-Item -ItemType Directory -Force -Path $work | Out-Null
 
 function Download-GitHubAsset([string]$url, [string]$target) {
     $downloaded = $false
-    if ($url -match '^https://github[.]com/([^/]+)/([^/]+)/releases/download/([^/]+)/([^/]+)[string]$url, [string]$sha, [string]$name) {
+    $assetUri = [Uri]$url
+    $segments = $assetUri.AbsolutePath.Trim("/").Split("/")
+    if ($assetUri.Host -eq "github.com" -and $segments.Length -eq 6 -and
+        $segments[2] -eq "releases" -and $segments[3] -eq "download") {
+        $owner = $segments[0]
+        $repository = $segments[1]
+        $tag = [Uri]::UnescapeDataString($segments[4])
+        $asset = [Uri]::UnescapeDataString($segments[5])
+        $assetPath = Join-Path (Split-Path $target -Parent) $asset
+        try {
+            & gh release download $tag --repo "$owner/$repository" --pattern $asset --dir (Split-Path $target -Parent) --clobber
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $assetPath)) {
+                Move-Item $assetPath $target -Force
+                $downloaded = $true
+            }
+        } catch {
+            Write-Warning "GitHub CLI could not retrieve $asset; using direct URL."
+        }
+    }
+    if (-not $downloaded) {
+        Invoke-WebRequest -Uri $url -OutFile $target -MaximumRetryCount 2 -RetryIntervalSec 4
+    }
+}
+function Get-VerifiedArchive([string]$url, [string]$sha, [string]$name) {
     $path = Join-Path $work $name
     Download-GitHubAsset $url $path
     $actual = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
