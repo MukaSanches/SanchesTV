@@ -55,4 +55,39 @@ public sealed class XmlTvParserTests
         Assert.Equal(3000, XmlTvParser.Parse(xml.ToString()).Count);
     }
 
+
+    [Fact]
+    public void Stream_Parser_Uses_Xml_Encoding_Declaration()
+    {
+        const string xml = "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?><tv><programme channel=\"tv\" start=\"20260920200000 +0000\" stop=\"20260920210000 +0000\"><title>Informação</title></programme></tv>";
+        var encoding = System.Text.Encoding.Latin1;
+        using var stream = new MemoryStream(encoding.GetBytes(xml));
+        Assert.Equal("Informação", Assert.Single(XmlTvParser.Parse(stream)).Title);
+    }
+
+    [Fact]
+    public void Stream_Parser_Supports_Gzip_Without_Materializing_Xml_String()
+    {
+        const string xml = "<tv><programme channel=\"tv\" start=\"20260920200000 +0000\" stop=\"20260920210000 +0000\"><title>Noticiário</title></programme></tv>";
+        using var compressed = new MemoryStream();
+        using (var compressor = new System.IO.Compression.GZipStream(
+            compressed, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
+        {
+            var data = System.Text.Encoding.UTF8.GetBytes(xml);
+            compressor.Write(data);
+        }
+        compressed.Position = 0;
+        using var unpack = new System.IO.Compression.GZipStream(
+            compressed, System.IO.Compression.CompressionMode.Decompress);
+        Assert.Equal("Noticiário", Assert.Single(XmlTvParser.Parse(unpack)).Title);
+    }
+
+    [Fact]
+    public void Stream_Parser_Prohibits_Dtd()
+    {
+        const string xml = "<!DOCTYPE tv [<!ENTITY x SYSTEM \"file:///etc/passwd\">]><tv/>";
+        using var source = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml));
+        Assert.Throws<System.Xml.XmlException>(() => XmlTvParser.Parse(source));
+    }
+
 }

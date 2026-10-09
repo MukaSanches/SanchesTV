@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
@@ -1008,24 +1009,46 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true, "Processando EPG...");
-            string xml;
+            IReadOnlyList<EpgProgram> programs;
 
             if (choose == MessageBoxResult.Yes)
             {
-                var dialog = new OpenFileDialog { Filter = "XMLTV|*.xml;*.xmltv|Todos os arquivos|*.*" };
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "XMLTV|*.xml;*.xmltv;*.xml.gz;*.xmltv.gz;*.gz|Todos os arquivos|*.*"
+                };
                 if (dialog.ShowDialog(this) != true)
                     return;
-                xml = await File.ReadAllTextAsync(dialog.FileName);
+
+                var path = dialog.FileName;
+                programs = await Task.Run(() =>
+                {
+                    using var source = File.OpenRead(path);
+                    using Stream payload = path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase)
+                        ? new GZipStream(source, CompressionMode.Decompress, leaveOpen: true)
+                        : source;
+                    return XmlTvParser.Parse(payload);
+                });
             }
             else
             {
                 var input = new InputDialog("EPG XMLTV", "URL XMLTV:") { Owner = this };
-                if (input.ShowDialog() != true || !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri))
+                if (input.ShowDialog() != true ||
+                    !Uri.TryCreate(input.Value, UriKind.Absolute, out var uri) ||
+                    uri.Scheme is not ("http" or "https"))
                     return;
-                xml = await _http.GetStringAsync(uri);
-            }
 
-            var programs = await Task.Run(() => XmlTvParser.Parse(xml));
+                using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+                await using var source = await response.Content.ReadAsStreamAsync();
+                var mediaType = response.Content.Headers.ContentType?.MediaType;
+                var compressed = uri.AbsolutePath.EndsWith(".gz", StringComparison.OrdinalIgnoreCase)
+                    || mediaType is "application/gzip" or "application/x-gzip";
+                using Stream payload = compressed
+                    ? new GZipStream(source, CompressionMode.Decompress, leaveOpen: true)
+                    : source;
+                programs = await Task.Run(() => XmlTvParser.Parse(payload));
+            }
             await _db.ReplaceEpgAsync(programs);
             StatusText.Text = $"{programs.Count:N0} programas de EPG importados";
 
