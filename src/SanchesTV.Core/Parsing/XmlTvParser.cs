@@ -10,18 +10,33 @@ public static class XmlTvParser
     public static IReadOnlyList<EpgProgram> Parse(string xml)
     {
         ArgumentNullException.ThrowIfNull(xml);
-        // Each programme is materialized independently; no huge XDocument tree.
-        var settings = new XmlReaderSettings
-        {
-            DtdProcessing = DtdProcessing.Prohibit,
-            XmlResolver = null,
-            MaxCharactersFromEntities = 0,
-            MaxCharactersInDocument = 256_000_000,
-            IgnoreComments = true
-        };
-        var result = new List<EpgProgram>();
         using var input = new StringReader(xml);
-        using var reader = XmlReader.Create(input, settings);
+        using var reader = XmlReader.Create(input, Settings());
+        return ParseReader(reader);
+    }
+
+    // Decode XML declarations (including non-UTF8 encodings) directly from the incoming
+    // bytes instead of buffering an entire multi-day XMLTV guide as a string.
+    public static IReadOnlyList<EpgProgram> Parse(Stream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        using var reader = XmlReader.Create(stream, Settings());
+        return ParseReader(reader);
+    }
+
+    private static XmlReaderSettings Settings() => new()
+    {
+        DtdProcessing = DtdProcessing.Prohibit,
+        XmlResolver = null,
+        MaxCharactersFromEntities = 0,
+        MaxCharactersInDocument = 256_000_000,
+        IgnoreComments = true,
+        CloseInput = false
+    };
+
+    private static IReadOnlyList<EpgProgram> ParseReader(XmlReader reader)
+    {
+        var result = new List<EpgProgram>();
         while (reader.Read())
         {
             if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "programme")
@@ -41,6 +56,7 @@ public static class XmlTvParser
             var title = Localized(node, "title");
             if (string.IsNullOrWhiteSpace(title))
                 continue;
+
             result.Add(new EpgProgram(channel.Trim(), start, stop, title,
                 Localized(node, "desc"), Localized(node, "category")));
         }
