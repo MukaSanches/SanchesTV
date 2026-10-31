@@ -50,9 +50,9 @@ public static class TorznabSearchParser
             var candidates = new[]
             {
                 Attribute("magneturl"),
+                (string?)enclosure?.Attribute("url") ?? "",
                 Element("link"),
-                Element("guid"),
-                (string?)enclosure?.Attribute("url") ?? ""
+                Element("guid")
             };
             var magnet = candidates.FirstOrDefault(x => x.StartsWith("magnet:?xt=urn:btih:", StringComparison.OrdinalIgnoreCase));
             var infoHash = Attribute("infohash");
