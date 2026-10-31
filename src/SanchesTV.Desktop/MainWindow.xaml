@@ -67,6 +67,7 @@
                                 <MenuItem Header="Adicionar URL M3U" Click="ImportUrl_Click"/>
                                 <MenuItem Header="Adicionar Xtream" Click="Xtream_Click"/>
                                 <MenuItem Header="Importar EPG" Click="ImportEpg_Click"/>
+                                <MenuItem Header="Buscar filmes por torrent" Click="TorrentMovieSearch_Click"/>
                                 <MenuItem Header="Streaming P2P" Click="P2p_Click"/>
                                 <MenuItem Header="Media Lab 7" Click="MediaLab_Click"/>
                                 <MenuItem Header="Guia / gravações" Click="EpgGuide_Click"/>
@@ -200,6 +201,8 @@
                             <Button Style="{StaticResource ModernButton}" Content="+ EPG"
                                     Click="ImportEpg_Click" ToolTip="Importar guia XMLTV"/>
                         </UniformGrid>
+                        <Button Style="{StaticResource ModernButton}" Content="⌕ Buscar filmes • torrent"
+                                Click="TorrentMovieSearch_Click" Margin="5,2" ToolTip="Pesquisar fontes autorizadas e assistir via streaming P2P"/>
                         <Button Style="{StaticResource ModernButton}" Content="◉ Streaming P2P"
                                 Click="P2p_Click" Margin="5,2" ToolTip="Assistir magnet ou .torrent autorizado sem esperar o download completo"/>
                         <Button Style="{StaticResource ModernButton}" Content="◈ Media Lab 8"
