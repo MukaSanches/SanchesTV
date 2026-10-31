@@ -172,7 +172,7 @@ public sealed class TorrentMovieSearchService : IDisposable
         foreach (var file in files.EnumerateArray())
         {
             var name = ReadJsonString(file, "name");
-            if (!name.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase))
+            if (name is null || !name.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             var escapedPath = string.Join("/", name.Split('/', StringSplitOptions.RemoveEmptyEntries)
