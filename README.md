@@ -1,6 +1,8 @@
-# SanchesTV 8.4.0 — Streaming Intelligence
+# SanchesTV 8.5.0 — Streaming Intelligence + Torrent Movie Discovery
 
 SanchesTV para Windows x64 agora oferece importação IPTV mais resistente, parsing de EPG por programa e controle remoto local autenticado com token de 256 bits e POST. O QR utiliza fragmento de URL para impedir que a chave seja enviada durante o carregamento inicial da página. O health check respeita headers da playlist e não penaliza protocolos que não são HTTP. A porta 8765 não deve ser exposta à internet: a LAN ainda utiliza HTTP sem TLS.
+
+**Novidade 8.5:** busca independente de filmes via Internet Archive e fontes Torznab opcionais, com reprodução pelo P2P já existente. [Guia da busca de filmes](docs/BUSCA_FILMES_TORRENT.md). A base de reprodução e os recursos da versão 8.4 permanecem preservados.
 
 Consulte a documentação de validação em [VALIDACAO_V8.4](docs/VALIDACAO_V8.4.md).
 

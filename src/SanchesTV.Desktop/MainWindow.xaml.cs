@@ -55,6 +55,7 @@ public partial class MainWindow : Window
     private readonly TaskCompletionSource<bool> _mpvReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RemoteControlServer? _remote;
     private P2pStreamingWindow? _p2pWindow;
+    private TorrentMovieSearchWindow? _torrentMovieSearchWindow;
     private IReadOnlyList<Channel> _allChannels = Array.Empty<Channel>();
     private List<ChannelListItem> _visibleItems = new();
     private Channel? _currentChannel;
@@ -825,6 +826,32 @@ public partial class MainWindow : Window
         };
         _p2pWindow.Closed += (_, _) => _p2pWindow = null;
         _p2pWindow.Show();
+    }
+
+    private void TorrentMovieSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (_torrentMovieSearchWindow is { IsVisible: true })
+        {
+            _torrentMovieSearchWindow.Activate();
+            return;
+        }
+
+        _torrentMovieSearchWindow = new TorrentMovieSearchWindow(
+            async magnet =>
+            {
+                P2p_Click(this, new RoutedEventArgs());
+                await _p2pWindow!.LoadDiscoveredMagnetAsync(magnet);
+            },
+            async torrentFile =>
+            {
+                P2p_Click(this, new RoutedEventArgs());
+                await _p2pWindow!.LoadDiscoveredTorrentAsync(torrentFile);
+            })
+        {
+            Owner = this
+        };
+        _torrentMovieSearchWindow.Closed += (_, _) => _torrentMovieSearchWindow = null;
+        _torrentMovieSearchWindow.Show();
     }
 
     private async Task PlayP2pStreamAsync(Uri uri, string displayName)

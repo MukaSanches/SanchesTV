@@ -6,7 +6,7 @@ O módulo P2P reproduz arquivos enquanto um torrent ainda está sendo transferid
 
 O recurso aceita magnet links fornecidos pelo usuário e arquivos .torrent locais. Ele é destinado a conteúdo próprio, livre, domínio público ou qualquer conteúdo que o usuário tenha direito de acessar ou distribuir.
 
-O SanchesTV não integra busca automática em indexadores de torrents.
+A janela opcional **Buscar filmes por torrent** pesquisa o Internet Archive e fontes Torznab configuradas pelo usuário. Consulte [BUSCA_FILMES_TORRENT.md](BUSCA_FILMES_TORRENT.md).
 
 ## Pipeline
 

@@ -66,6 +66,20 @@ public sealed class P2pStreamingWindow : Window
         _timer.Tick += MaintenanceTick;
     }
 
+    // Additive integration point: reuse the existing metadata, file selection and playback UI.
+    public Task LoadDiscoveredMagnetAsync(string magnet)
+    {
+        _magnet.Text = magnet;
+        Activate();
+        return LoadAsync(() => _service.LoadMagnetAsync(magnet));
+    }
+
+    public Task LoadDiscoveredTorrentAsync(string path)
+    {
+        Activate();
+        return LoadAsync(() => _service.LoadTorrentFileAsync(path));
+    }
+
     private UIElement BuildUi()
     {
         var root = new Grid { Margin = new Thickness(22) };
